@@ -7,8 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	rand2 "math/rand"
 	"strconv"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/pbkdf2"
 )
@@ -71,3 +73,40 @@ func hashEqual(h1, h2 []byte) bool {
 
 	return diff == 0
 }
+
+var randSeeded = false
+
+// RandString returns a random string of len n with the provided char set
+// charset can be `AlphaRunes`, `AlphaRunesLower`, `AlphaRunesUpper` or `AplhanumericRunes`
+func RandString(charset string, n int) string {
+	if !randSeeded {
+		rand2.Seed(time.Now().UnixNano())
+		randSeeded = true
+	}
+	b := make([]byte, n)
+
+	for i := range b {
+		b[i] = charset[rand2.Int63()%int64(len(charset))]
+	}
+
+	return string(b)
+}
+
+// RandInt64 returns a random positive number up to max
+func RandInt64(max int64) int64 {
+	if !randSeeded {
+		rand2.Seed(time.Now().UnixNano())
+		randSeeded = true
+	}
+	return rand2.Int63n(max)
+}
+
+// RandInt returns a random positive number up to max
+func RandInt(max int) int {
+	if !randSeeded {
+		rand2.Seed(time.Now().UnixNano())
+		randSeeded = true
+	}
+	return rand2.Intn(max)
+}
+

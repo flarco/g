@@ -118,3 +118,4 @@ func Decrypt(cryptoText string, key string) (string, error) {
 
 	return fmt.Sprintf("%s", ciphertext), nil
 }
+
