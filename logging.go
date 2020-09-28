@@ -2,15 +2,16 @@ package gutil
 
 import (
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/flarco/gutil/stacktrace"
-	"github.com/rs/zerolog"
 	"io"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
+	"github.com/flarco/gutil/stacktrace"
+	"github.com/rs/zerolog"
 )
 
 // LogHooks are log hooks
@@ -28,6 +29,9 @@ var LogErr zerolog.Logger
 // CallerLevel is the stack caller information level
 var CallerLevel = 0
 
+// DisableColor disables color
+var DisableColor = false
+
 // Level is the log level
 type Level int8
 
@@ -38,6 +42,11 @@ const (
 	LowDebugLevel
 	TraceLevel
 )
+
+// SetZeroLogLevel sets the zero log level
+func SetZeroLogLevel(level zerolog.Level) {
+	zerolog.SetGlobalLevel(level)
+}
 
 // SetZeroLogHook sets a zero log hook
 func SetZeroLogHook(h zerolog.Hook) {
@@ -53,6 +62,10 @@ func SetLogHook(f func(t string, a []interface{})) {
 // IsDebugLow returns true is debug is low
 func IsDebugLow() bool {
 	return LogLevel == LowDebugLevel || LogLevel == TraceLevel
+}
+
+func disableColor() bool {
+	return DisableColor
 }
 
 // P prints the value of object

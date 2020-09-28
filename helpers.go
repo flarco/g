@@ -19,7 +19,6 @@ import (
 
 var (
 	json = jsoniter.ConfigCompatibleWithStandardLibrary
-
 )
 
 const (
@@ -78,10 +77,6 @@ func init() {
 		LogOut = zerolog.New(outputErr).With().Timestamp().Logger()
 		LogErr = zerolog.New(outputErr).With().Timestamp().Logger()
 	}
-}
-
-func disableColor() bool {
-	return !cast.ToBool(os.Getenv("SLINGELT_LOGGING_COLOR"))
 }
 
 // IsTask returns true is is TASK
@@ -380,4 +375,3 @@ func CloneValue(source interface{}, destin interface{}) {
 		destin = x.Interface()
 	}
 }
-
