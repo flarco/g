@@ -289,10 +289,25 @@ func MJ(args ...interface{}) string {
 	return string(MarshalMap(M(args...)))
 }
 
+// Marshal marshals an interface into json
+func Marshal(i interface{}) string {
+	jBytes, _ := json.Marshal(i)
+	return string(jBytes)
+}
+
 // MarshalMap marshals a map into json
 func MarshalMap(m map[string]interface{}) []byte {
 	jBytes, _ := json.Marshal(m)
 	return jBytes
+}
+
+// Unmarshal unmarshals into an objPtr
+func Unmarshal(s string, objPtr interface{}) error {
+	err := json.Unmarshal([]byte(s), objPtr)
+	if err != nil {
+		err = Error(err, "could not unmarshal")
+	}
+	return err
 }
 
 // UnmarshalMap unmarshals into a map of interface
