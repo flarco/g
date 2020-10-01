@@ -3,10 +3,11 @@ package gutil
 import (
 	"context"
 	"crypto/tls"
-	"github.com/mailgun/mailgun-go/v3"
-	"gopkg.in/gomail.v2"
 	"os"
 	"time"
+
+	"github.com/mailgun/mailgun-go/v3"
+	"gopkg.in/gomail.v2"
 )
 
 var (
@@ -16,6 +17,9 @@ var (
 
 // SendEmailMG sends an email with MailGun
 func SendEmailMG(msg *mailgun.Message) (string, error) {
+	if os.Getenv("TESTING") == "TRUE" {
+		return "", nil
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -57,4 +61,3 @@ func SendMail(from string, to []string, subject string, textHTML string) error {
 	err := d.DialAndSend(m)
 	return err
 }
-
