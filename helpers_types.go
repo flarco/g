@@ -70,7 +70,8 @@ func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 // Err return error if any
 func (c *Context) Err() error {
 	if c.Ctx.Err() != nil {
-		eg := ErrorGroup{Errors: []error{c.Ctx.Err(), c.ErrGroup.Err()}}
+		eg := ErrorGroup{Errors: []error{c.Ctx.Err()}}
+		eg.Capture(c.ErrGroup.Err())
 		return eg.Err()
 	}
 	return c.ErrGroup.Err()

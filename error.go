@@ -3,12 +3,13 @@ package gutil
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/flarco/gutil/stacktrace"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
-	"os"
-	"strings"
 )
 
 // ErrStack is a modified version of stacktrace Propagate
@@ -183,7 +184,7 @@ func (e *ErrorGroup) Err() error {
 		return nil
 	}
 
-	var errstrings []string
+	errstrings := []string{}
 	for _, er := range e.Errors {
 		errstrings = append(errstrings, er.Error())
 	}
@@ -196,4 +197,3 @@ func ErrJSON(HTTPStatus int, err error, args ...interface{}) error {
 	LogError(stacktrace.Propagate(err, msg, 3))
 	return echo.NewHTTPError(HTTPStatus, M("message", msg, "error", ErrMsg(err)))
 }
-
