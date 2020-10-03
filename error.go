@@ -75,9 +75,6 @@ func ErrMsg(e error) string {
 		}
 	}
 	return strings.Join(msgArr, "\n")
-	// msgArr = strings.Split(e.Error(), `Caused by: `)
-	// msg := msgArr[len(msgArr)-1]
-	// return msg
 }
 
 // ErrMsgSimple returns a simpler error message
