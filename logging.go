@@ -21,7 +21,7 @@ var LogHooks = []func(t string, a []interface{}){}
 var LogOut zerolog.Logger
 
 // LogLevel is the log level
-var LogLevel = NormalLevel
+var LogLevel = new(Level)
 
 // LogErr is the error/debug logger
 var LogErr zerolog.Logger
@@ -48,6 +48,24 @@ func SetZeroLogLevel(level zerolog.Level) {
 	zerolog.SetGlobalLevel(level)
 }
 
+// SetLogLevel sets the gutil log level
+func SetLogLevel(level Level) {
+	LogLevel = &level
+}
+
+// GetLogLevel gets the gutil log level
+func GetLogLevel() Level {
+	// if val := os.Getenv("GUTIL_DEBUG"); val != "" {
+	// 	switch val {
+	// 	case "TRACE":
+	// 		SetZeroLogLevel(zerolog.TraceLevel)
+	// 	case :
+	// 		SetZeroLogLevel(zerolog.DebugLevel)
+	// 	}
+	// }
+	return *LogLevel
+}
+
 // SetZeroLogHook sets a zero log hook
 func SetZeroLogHook(h zerolog.Hook) {
 	LogOut = LogOut.Hook(h)
@@ -61,7 +79,7 @@ func SetLogHook(f func(t string, a []interface{})) {
 
 // IsDebugLow returns true is debug is low
 func IsDebugLow() bool {
-	return LogLevel == LowDebugLevel || LogLevel == TraceLevel
+	return GetLogLevel() == LowDebugLevel || GetLogLevel() == TraceLevel
 }
 
 func disableColor() bool {
@@ -115,7 +133,7 @@ func Log(text string, args ...interface{}) {
 			LogC(text[2:], "yellow", os.Stderr)
 		}
 	} else if strings.HasPrefix(text, "-") {
-		if LogLevel >= DebugLevel {
+		if GetLogLevel() >= DebugLevel {
 			// LogC(text[1:], "yellow", os.Stderr)
 			localLogDbg.Msg(text[1:])
 		}
