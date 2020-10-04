@@ -7,15 +7,30 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/spf13/cast"
 
 	"github.com/fatih/color"
 	"github.com/flarco/gutil/stacktrace"
 	"github.com/rs/zerolog"
 )
 
+// LogHook is a hook to be perform at the specified level
+type LogHook struct {
+	Level    zerolog.Level
+	Send     func(t string, a ...interface{})
+	batch    [][]interface{}
+	labels   map[string]string
+	queue    chan LokiLine
+	lastSent time.Time
+	mux      sync.Mutex
+	ticker   *time.Ticker
+}
+
 // LogHooks are log hooks
-var LogHooks = []func(t string, a []interface{}){}
+var LogHooks = []*LogHook{}
 
 // LogOut is the non-error/normal logger
 var LogOut zerolog.Logger
@@ -36,11 +51,16 @@ var DisableColor = false
 type Level int8
 
 const (
-	// NormalLevel defines normal log level.
-	NormalLevel Level = iota
-	DebugLevel
+	// TraceLevel defines trace log level.
+	TraceLevel Level = iota
+	// LowDebugLevel defines low debug log level.
 	LowDebugLevel
-	TraceLevel
+	// DebugLevel defines debug log level.
+	DebugLevel
+	// NormalLevel defines normal log level.
+	NormalLevel
+	// WarnLevel defines warning log level.
+	WarnLevel
 )
 
 // SetZeroLogLevel sets the zero log level
@@ -51,6 +71,29 @@ func SetZeroLogLevel(level zerolog.Level) {
 // SetLogLevel sets the gutil log level
 func SetLogLevel(level Level) {
 	LogLevel = &level
+}
+
+// NewLogHook return a new log hook
+func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
+	zLevel := zerolog.InfoLevel
+	switch level {
+	case TraceLevel:
+		zLevel = zerolog.TraceLevel
+	case DebugLevel, LowDebugLevel:
+		zLevel = zerolog.DebugLevel
+	case WarnLevel:
+		zLevel = zerolog.WarnLevel
+	}
+	if doFunc == nil {
+		doFunc = func(t string, a ...interface{}) {}
+	}
+	return &LogHook{
+		Level:  zLevel,
+		Send:   doFunc,
+		queue:  make(chan LokiLine, 100000),
+		batch:  [][]interface{}{},
+		labels: map[string]string{},
+	}
 }
 
 // GetLogLevel gets the gutil log level
@@ -73,8 +116,8 @@ func SetZeroLogHook(h zerolog.Hook) {
 }
 
 // SetLogHook sets a log hook
-func SetLogHook(f func(t string, a []interface{})) {
-	LogHooks = append(LogHooks, f)
+func SetLogHook(lh *LogHook) {
+	LogHooks = append(LogHooks, lh)
 }
 
 // IsDebugLow returns true is debug is low
@@ -186,9 +229,10 @@ func Info(text string, args ...interface{}) {
 }
 
 func doHooks(level zerolog.Level, text string, args []interface{}) {
-	if zerolog.GlobalLevel() == level {
-		for _, hook := range LogHooks {
-			hook(text, args)
+	for _, hook := range LogHooks {
+		if zerolog.GlobalLevel() >= hook.Level && hook.Send != nil {
+			args = append(args, M("level", level.String()))
+			go hook.Send(text, args...)
 		}
 	}
 }
@@ -297,4 +341,78 @@ func TimeColored() string {
 		return time.Now().Format("2006-01-02 15:04:05")
 	}
 	return color.CyanString(time.Now().Format("2006-01-02 15:04:05"))
+}
+
+// GetLokiHook returns a log hook to a Grafana Loki instance
+// to have dynamic label values, set a key in `labels` with a empty string value
+func GetLokiHook(URL string, labels map[string]string) (hook *LogHook) {
+	lokiChan := make(chan LokiLine, 100000)
+
+	// add level as dynamic label
+	labels["level"] = ""
+
+	hookFunc := func(text string, args ...interface{}) {
+		data := M()
+		newArgs := []interface{}{}
+		for _, val := range args {
+			switch val.(type) {
+			case map[string]interface{}:
+				for k, v := range val.(map[string]interface{}) {
+					data[k] = v
+				}
+			default:
+				newArgs = append(newArgs, val)
+			}
+		}
+
+		newLabels := map[string]string{}
+		for k, v := range labels {
+			if v != "" {
+				newLabels[k] = v
+			}
+		}
+
+		text = F(text, newArgs...)
+		for k, v := range data {
+			vS := ""
+			switch v.(type) {
+			case *time.Time:
+				t := v.(*time.Time)
+				if t == nil {
+					vS = ""
+				}
+			default:
+				vS = cast.ToString(v)
+			}
+
+			if vS == "" {
+				continue
+			} else if _, ok := labels[k]; ok {
+				newLabels[k] = vS
+			} else {
+				text = F("%s %s=%s", text, k, vS)
+			}
+		}
+		lokiChan <- LokiLine{newLabels, text}
+	}
+
+	hook = NewLogHook(DebugLevel, hookFunc)
+	hook.labels = labels
+	hook.queue = lokiChan
+	go func() {
+		defer close(lokiChan)
+		batch := []LokiLine{}
+		for {
+			select {
+			case line := <-lokiChan:
+				batch = append(batch, line)
+			default:
+				if len(batch) > 0 {
+					lokiSendBatch(URL, batch)
+					batch = []LokiLine{}
+				}
+			}
+		}
+	}()
+	return
 }

@@ -116,7 +116,7 @@ func Error(e error, args ...interface{}) error {
 	msg := ArgsErrMsg(args...)
 
 	if e != nil {
-		doHooks(zerolog.DebugLevel, F("%s ~ %s", msg, e.Error()), []interface{}{})
+		// doHooks(zerolog.DebugLevel, F("%s ~ %s", msg, e.Error()), []interface{}{})
 		if IsDebugLow() {
 			return stacktrace.Propagate(e, msg, 3)
 		}

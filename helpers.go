@@ -260,6 +260,7 @@ func MapToKVArr(properties map[string]string) []string {
 	return props
 }
 
+// Must panics on error
 func Must(e error) {
 	if e != nil {
 		panic(stacktrace.Propagate(e, "", 3))

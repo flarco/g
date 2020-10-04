@@ -50,7 +50,7 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func TestLogging(t *testing.T) {
-	testLogHook := func(t string, a []interface{}) {
+	testLogHook := func(t string, a ...interface{}) {
 		println("hook run for -> " + F(t, a...))
 	}
 	// log.Info().Msg("hello world")
@@ -74,7 +74,7 @@ func TestLogging(t *testing.T) {
 	Debug("hello world", mapInterf)
 	Trace("hello world")
 	Warn("number of cpus %d", runtime.NumCPU())
-	SetLogHook(testLogHook)
+	SetLogHook(NewLogHook(DebugLevel, testLogHook))
 	Warn("number of cpus %d", runtime.NumCPU())
 	LogError(fmt.Errorf("new error"), "hello")
 	// Error(nil)
