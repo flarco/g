@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/spf13/cast"
-
 	"github.com/fatih/color"
 	"github.com/flarco/gutil/stacktrace"
 	"github.com/rs/zerolog"
@@ -23,7 +21,7 @@ type LogHook struct {
 	Send     func(t string, a ...interface{})
 	batch    [][]interface{}
 	labels   map[string]string
-	queue    chan LokiLine
+	queue    chan lokiLine
 	lastSent time.Time
 	mux      sync.Mutex
 	ticker   *time.Ticker
@@ -90,7 +88,7 @@ func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
 	return &LogHook{
 		Level:  zLevel,
 		Send:   doFunc,
-		queue:  make(chan LokiLine, 100000),
+		queue:  make(chan lokiLine, 100000),
 		batch:  [][]interface{}{},
 		labels: map[string]string{},
 	}
@@ -341,78 +339,4 @@ func TimeColored() string {
 		return time.Now().Format("2006-01-02 15:04:05")
 	}
 	return color.CyanString(time.Now().Format("2006-01-02 15:04:05"))
-}
-
-// GetLokiHook returns a log hook to a Grafana Loki instance
-// to have dynamic label values, set a key in `labels` with a empty string value
-func GetLokiHook(URL string, labels map[string]string) (hook *LogHook) {
-	lokiChan := make(chan LokiLine, 100000)
-
-	// add level as dynamic label
-	labels["level"] = ""
-
-	hookFunc := func(text string, args ...interface{}) {
-		data := M()
-		newArgs := []interface{}{}
-		for _, val := range args {
-			switch val.(type) {
-			case map[string]interface{}:
-				for k, v := range val.(map[string]interface{}) {
-					data[k] = v
-				}
-			default:
-				newArgs = append(newArgs, val)
-			}
-		}
-
-		newLabels := map[string]string{}
-		for k, v := range labels {
-			if v != "" {
-				newLabels[k] = v
-			}
-		}
-
-		text = F(text, newArgs...)
-		for k, v := range data {
-			vS := ""
-			switch v.(type) {
-			case *time.Time:
-				t := v.(*time.Time)
-				if t == nil {
-					vS = ""
-				}
-			default:
-				vS = cast.ToString(v)
-			}
-
-			if vS == "" {
-				continue
-			} else if _, ok := labels[k]; ok {
-				newLabels[k] = vS
-			} else {
-				text = F("%s %s=%s", text, k, vS)
-			}
-		}
-		lokiChan <- LokiLine{newLabels, text}
-	}
-
-	hook = NewLogHook(DebugLevel, hookFunc)
-	hook.labels = labels
-	hook.queue = lokiChan
-	go func() {
-		defer close(lokiChan)
-		batch := []LokiLine{}
-		for {
-			select {
-			case line := <-lokiChan:
-				batch = append(batch, line)
-			default:
-				if len(batch) > 0 {
-					lokiSendBatch(URL, batch)
-					batch = []LokiLine{}
-				}
-			}
-		}
-	}()
-	return
 }
