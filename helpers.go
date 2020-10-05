@@ -322,6 +322,17 @@ func UnmarshalMap(s string) (map[string]interface{}, error) {
 	return m, nil
 }
 
+// UnmarshalArray unmarshals into a array of interface
+func UnmarshalArray(s string) ([]interface{}, error) {
+	a := []interface{}{}
+	err := json.Unmarshal([]byte(s), &a)
+	if err != nil {
+		err = Error(err, "could not unmarshal into array")
+		return a, err
+	}
+	return a, nil
+}
+
 // NewTsID creates a new timestamp ID
 func NewTsID(prefix ...string) string {
 	p := ""
