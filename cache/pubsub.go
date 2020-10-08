@@ -44,6 +44,12 @@ func (c *Cache) Subscribe(channel string, callback func(n *pq.Notification)) {
 	err := listener.Listen(channel)
 	g.LogError(err, "could not listen to channel "+channel)
 	if err == nil {
+		if lI, ok := c.listeners.Get(channel); ok {
+			l := lI.(*Listener)
+			l.listener.Close()
+			l.Context.Cancel()
+			c.listeners.Remove(channel)
+		}
 		l := &Listener{g.NewContext(c.Context.Ctx), channel, listener, callback}
 		c.listeners.Set(channel, l)
 		go l.ListenLoop()
