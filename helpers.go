@@ -402,3 +402,9 @@ func CloneValue(source interface{}, destin interface{}) {
 		destin = x.Interface()
 	}
 }
+
+// PathExists returns true if path exists
+func PathExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}

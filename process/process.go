@@ -14,17 +14,29 @@ import (
 
 // Proc is a command background process
 type Proc struct {
-	Bin                        string       `json:"-"`
-	Args                       []string     `json:"-"`
-	Cmd                        *exec.Cmd    `json:"-"`
-	Stderr, Stdout             bytes.Buffer `json:"-"`
-	StderrReader, StdoutReader io.Reader    `json:"-"`
+	Bin                        string
+	Args                       []string
+	Cmd                        *exec.Cmd
+	Workdir                    string
+	Stderr, Stdout             bytes.Buffer
+	StderrReader, StdoutReader io.Reader
 	printMux                   sync.Mutex
+	scanner                    *scanConfig
+}
+
+type scanConfig struct {
+	stdout   bool
+	stderr   bool
+	scanFunc func(src, text string)
 }
 
 // NewProc creates a new process and returns it
 func NewProc(bin string, args ...string) (p *Proc, err error) {
-	p = &Proc{Bin: bin, Args: args}
+	p = &Proc{
+		Bin:  bin,
+		Args: args,
+	}
+
 	if !p.ExecutableFound() {
 		err = g.Error(fmt.Errorf("executable '%s' not found in path", p.Bin))
 	}
@@ -40,41 +52,81 @@ func (p *Proc) ExecutableFound() bool {
 	return true
 }
 
-// Start executes the dbt command
-func (p *Proc) Start() (err error) {
+// SetArgs sets the args for the command
+func (p *Proc) SetArgs(args ...string) {
+	p.Args = args
+}
 
+// Start executes the command
+func (p *Proc) Start(args ...string) (err error) {
+	if len(args) > 0 {
+		p.SetArgs(args...)
+	}
 	p.Cmd = exec.Command(p.Bin, p.Args...)
-	p.Cmd.Stderr = &p.Stderr
-	p.Cmd.Stdout = &p.Stdout
-	p.StdoutReader, _ = p.Cmd.StdoutPipe()
-	p.StderrReader, _ = p.Cmd.StderrPipe()
-
+	p.Cmd.Dir = p.Workdir
+	if p.scanner != nil {
+		p.StdoutReader, err = p.Cmd.StdoutPipe()
+		if err != nil {
+			return g.Error(err)
+		}
+		p.StderrReader, err = p.Cmd.StderrPipe()
+		if err != nil {
+			return g.Error(err)
+		}
+	} else {
+		p.Stdout.Reset()
+		p.Stderr.Reset()
+		p.Cmd.Stderr = &p.Stderr
+		p.Cmd.Stdout = &p.Stdout
+	}
 	g.Trace("Proc command -> %s", p.CmdStr())
 	err = p.Cmd.Start()
 	if err != nil {
 		err = g.Error(err, p.CmdErrorText())
 	}
+
+	p.scan()
+
 	return
 }
 
-// ScanWith scans with the provided function
-func (p *Proc) ScanWith(stdout bool, stderr bool, scanFunc func(text string)) {
-	if stdout {
+// SetScanner sets scanner with the provided function
+func (p *Proc) SetScanner(stdout bool, stderr bool, scanFunc func(src, text string)) {
+	p.scanner = &scanConfig{stdout: stdout, stderr: stderr, scanFunc: scanFunc}
+}
+
+// SetPrint set scanner to print
+func (p *Proc) SetPrint() {
+	p.SetScanner(true, true, func(s, t string) { fmt.Println(t) })
+}
+
+func (p *Proc) scan() {
+	if p.scanner == nil {
+		return
+	}
+
+	if p.scanner.stdout {
 		go func() {
 			scanner := p.StdoutScannerLines()
+			if scanner == nil {
+				return
+			}
 			for scanner.Scan() {
 				p.printMux.Lock() // print one line at a time
-				scanFunc(scanner.Text())
+				p.scanner.scanFunc("stdout", scanner.Text())
 				p.printMux.Unlock()
 			}
 		}()
 	}
-	if stderr {
+	if p.scanner.stderr {
 		go func() {
 			scanner := p.StderrScannerLines()
+			if scanner == nil {
+				return
+			}
 			for scanner.Scan() {
 				p.printMux.Lock() // print one line at a time
-				scanFunc(scanner.Text())
+				p.scanner.scanFunc("stderr", scanner.Text())
 				p.printMux.Unlock()
 			}
 		}()
@@ -82,15 +134,11 @@ func (p *Proc) ScanWith(stdout bool, stderr bool, scanFunc func(text string)) {
 }
 
 // Run executes the dbt command, prints output and waits for it to finish
-func (p *Proc) Run(printOutput bool) (err error) {
-	err = p.Start()
+func (p *Proc) Run(args ...string) (err error) {
+	err = p.Start(args...)
 	if err != nil {
-		err = g.Error(err, "could not start process")
+		err = g.Error(err, "could not start process. %s", p.CmdErrorText())
 		return
-	}
-
-	if printOutput {
-		p.ScanWith(true, true, func(t string) { fmt.Print(t) })
 	}
 
 	err = p.Cmd.Wait()
@@ -114,15 +162,26 @@ func (p *Proc) CmdErrorText() string {
 }
 
 // StdoutScannerLines returns a scanner for stdout
-func (p *Proc) StdoutScannerLines() *bufio.Scanner {
-	scanner := bufio.NewScanner(p.StdoutReader)
+func (p *Proc) StdoutScannerLines() (scanner *bufio.Scanner) {
+	if p.StdoutReader == nil {
+		return
+	}
+	scanner = bufio.NewScanner(p.StdoutReader)
 	scanner.Split(bufio.ScanLines)
 	return scanner
 }
 
 // StderrScannerLines returns a scanner for stderr
-func (p *Proc) StderrScannerLines() *bufio.Scanner {
-	scanner := bufio.NewScanner(p.StderrReader)
+func (p *Proc) StderrScannerLines() (scanner *bufio.Scanner) {
+	if p.StderrReader == nil {
+		return
+	}
+	scanner = bufio.NewScanner(p.StderrReader)
 	scanner.Split(bufio.ScanLines)
 	return scanner
+}
+
+// Wait waits for the process to end
+func (p *Proc) Wait() error {
+	return p.Cmd.Wait()
 }
