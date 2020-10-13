@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/flarco/gutil/stacktrace"
 	"github.com/rs/zerolog"
 )
 
@@ -298,20 +297,20 @@ func LogCCyan(text string) { LogC(text, "cyan", os.Stderr) }
 // LogFatal handles logging of an error and exits, useful for reporting
 func LogFatal(E error, args ...interface{}) {
 	if E != nil {
+		err, ok := E.(*ErrType)
+		if !ok {
+			println(color.RedString(E.Error()))
+		}
 
 		if !IsDebugLow() {
-			println(color.RedString(ErrMsgSimple(E)))
+			println(color.RedString(err.ErrorFull()))
 			os.Exit(1)
 		}
 
-		if !strings.Contains(E.Error(), " --- at ") {
-			E = stacktrace.Propagate(E, "error:", 3) // add stack
-		}
-
 		if IsTask() {
-			fmt.Fprintf(os.Stdout, ErrMsgSimple(E)) // stdout simple err
+			fmt.Fprintf(os.Stdout, err.Err) // stdout simple err
 		}
-		println(color.RedString(E.Error())) // stderr for detailed
+		println(color.RedString(err.Debug())) // stderr for detailed
 		os.Exit(1)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/flarco/gutil/stacktrace"
@@ -12,9 +13,164 @@ import (
 	"github.com/spf13/cast"
 )
 
-// ErrStack is a modified version of stacktrace Propagate
-func ErrStack(err error) error {
-	return stacktrace.Propagate(err, "Error:", 3)
+// ErrType is an error with details
+type ErrType struct {
+	Err         string   // the original error string
+	MsgStack    []string // addition details for error context
+	CallerStack []string // the caller stack
+	Position    int      // the position in the array stack (0 is first)
+}
+
+// MsgStacked return a stacked error message
+func (e *ErrType) MsgStacked() (m string) {
+	ErrStack := append([]string{e.Err}, e.MsgStack...)
+	return strings.Join(ErrStack, "\n")
+}
+
+// ErrorFull returns the full error stack
+func (e *ErrType) ErrorFull() string {
+	if len(e.MsgStack) == 0 {
+		return e.Err
+	}
+
+	MsgStack := make([]string, len(e.MsgStack))
+	copy(MsgStack, e.MsgStack)
+	for i, j := 0, len(MsgStack)-1; i < j; i, j = i+1, j-1 {
+		MsgStack[i], MsgStack[j] = MsgStack[j], MsgStack[i]
+	}
+	return F("~ %s\n%s", strings.Join(MsgStack, "\n~ "), e.Err)
+}
+
+func (e *ErrType) Error() string {
+	if len(e.MsgStack) == 0 {
+		return e.Err
+	}
+	return F("~ %s\n%s", e.MsgStack[0], e.Err)
+}
+
+// DebugError returns an error type with a detailed string
+func (e *ErrType) DebugError() error {
+	return fmt.Errorf(e.Debug())
+}
+
+// Debug returns a stacked error for debugging
+func (e *ErrType) Debug() string {
+	if len(e.CallerStack) == 0 {
+		return e.Err
+	}
+
+	stack := []string{}
+	for i, caller := range e.CallerStack {
+		msg := ""
+		if len(e.MsgStack) > i {
+			msg = e.MsgStack[i]
+		}
+
+		msgDbg := F("~ %s\n--- %s ---", msg, caller)
+		if msg == "" {
+			msgDbg = F("--- %s ---", caller)
+		}
+		stack = append(stack, msgDbg)
+	}
+
+	for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
+		stack[i], stack[j] = stack[j], stack[i]
+	}
+	return F("%s\n%s", strings.Join(stack, "\n"), e.Err)
+}
+
+func getCallerStack() []string {
+	callerArr := []string{}
+	i := 2
+	for {
+		pc, file, no, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		details := runtime.FuncForPC(pc)
+		funcNameArr := strings.Split(details.Name(), ".")
+		funcName := funcNameArr[len(funcNameArr)-1]
+		fileArr := strings.Split(file, "/")
+		callStr := F("%s:%d %s", fileArr[len(fileArr)-1], no, funcName)
+		callerArr = append(callerArr, callStr)
+		i++
+	}
+	return callerArr
+}
+
+// NewErrorType returns an Errtype error
+func NewErrorType(e interface{}, args ...interface{}) *ErrType {
+	if e == nil {
+		return nil
+	}
+
+	MsgStack := []string{ArgsErrMsg(args...)}
+	Err := cast.ToString(e)
+	CallerStack := getCallerStack()
+	Position := 0
+
+	switch e.(type) {
+	case *ErrType:
+		errPrev := e.(*ErrType)
+		Err = errPrev.Err
+		MsgStack = append(errPrev.MsgStack, MsgStack...)
+		CallerStack = append([]string{errPrev.CallerStack[0]}, CallerStack...)
+		Position = errPrev.Position + 1
+	}
+
+	return &ErrType{
+		Err:         Err,
+		MsgStack:    MsgStack,
+		CallerStack: CallerStack,
+		Position:    Position,
+	}
+}
+
+// Error returns stacktrace error with message
+func Error(e interface{}, args ...interface{}) error {
+
+	if e == nil {
+		return nil
+	}
+
+	MsgStack := []string{ArgsErrMsg(args...)}
+	Err := cast.ToString(e)
+	CallerStack := getCallerStack()
+	Position := 0
+
+	switch e.(type) {
+	case *ErrType:
+		errPrev := e.(*ErrType)
+		Err = errPrev.Err
+		MsgStack = append(errPrev.MsgStack, MsgStack...)
+		CallerStack = append([]string{errPrev.CallerStack[0]}, CallerStack...)
+		Position = errPrev.Position + 1
+	}
+
+	return &ErrType{
+		Err:         Err,
+		MsgStack:    MsgStack,
+		CallerStack: CallerStack,
+		Position:    Position,
+	}
+}
+
+// ErrorOld returns stacktrace error with message
+func ErrorOld(e error, args ...interface{}) error {
+	msg := ArgsErrMsg(args...)
+
+	if e != nil {
+		// doHooks(zerolog.DebugLevel, F("%s ~ %s", msg, e.Error()), []interface{}{})
+		if IsDebugLow() {
+			return stacktrace.Propagate(e, msg, 3)
+		}
+		return fmt.Errorf("~ %s\n%s", msg, e.Error())
+	}
+
+	err := fmt.Errorf("err is nil! Need to add if err != nil")
+	LogErr.Err(stacktrace.Propagate(err, msg, 3)).Msg("err is nil! Need to add if err != nil")
+
+	return nil
 }
 
 // IsErr : checks for error
@@ -38,13 +194,14 @@ func isErrP(err error, msg string, callerSkip int) bool {
 func LogError(E error, args ...interface{}) {
 	msg := ArgsErrMsg(args...)
 	if E != nil {
-		if !strings.Contains(E.Error(), " --- at ") && IsDebugLow() {
-			E = stacktrace.Propagate(E, "error:", 3) // add stack
-		}
 		doHooks(zerolog.DebugLevel, E.Error(), args)
 		if IsTask() {
 			simpleErr := errors.New(ErrMsgSimple(E))
 			LogOut.Err(simpleErr).Msg(msg) // simple message in STDOUT
+		}
+		err, ok := E.(*ErrType)
+		if ok {
+			E = err.DebugError()
 		}
 		LogErr.Err(E).Msg(msg) // detailed error in STDERR
 	}
@@ -57,7 +214,7 @@ func ArgsErrMsg(args ...interface{}) (msg string) {
 	} else if len(args) > 1 {
 		msg = F(cast.ToString(args[0]), args[1:]...)
 	} else {
-		msg = "error:"
+		msg = ""
 	}
 	return
 }
@@ -67,14 +224,7 @@ func ErrMsg(e error) string {
 	if e == nil {
 		return ""
 	}
-	msgLines := strings.Split(e.Error(), "\n")
-	msgArr := []string{}
-	for _, line := range msgLines {
-		if !strings.HasPrefix(line, " --- at ") && line != "error:" {
-			msgArr = append(msgArr, line)
-		}
-	}
-	return strings.Join(msgArr, "\n")
+	return e.Error()
 }
 
 // ErrMsgSimple returns a simpler error message
@@ -82,25 +232,12 @@ func ErrMsgSimple(e error) string {
 	if e == nil {
 		return ""
 	}
-	msgLines := strings.Split(e.Error(), "\n")
-	msgArr := []string{}
-	currErrMsg := []string{}
-	for _, line := range msgLines {
-		if strings.HasPrefix(line, "~ ") {
-			msgArr = append(msgArr, strings.Join(currErrMsg, "\n"))
-			currErrMsg = []string{strings.TrimPrefix(line, "~ ")}
-			continue
-		} else if strings.HasPrefix(line, " --- at") {
-			msgArr = append(msgArr, strings.Join(currErrMsg, "\n"))
-			currErrMsg = []string{strings.TrimPrefix(line, " --- at")}
-			continue
-		} else if line != "error:" && strings.TrimSpace(line) != "" {
-			currErrMsg = append(currErrMsg, line)
-		}
+
+	err, ok := e.(*ErrType)
+	if !ok {
+		return e.Error()
 	}
-	msgArr = append(msgArr, strings.Join(currErrMsg, "\n")) // last err
-	msg := msgArr[len(msgArr)-1]
-	return msg
+	return err.Err
 }
 
 // ErrorText returns the error text if error is not nul
@@ -109,24 +246,6 @@ func ErrorText(e error) string {
 		return e.Error()
 	}
 	return ""
-}
-
-// Error returns stacktrace error with message
-func Error(e error, args ...interface{}) error {
-	msg := ArgsErrMsg(args...)
-
-	if e != nil {
-		// doHooks(zerolog.DebugLevel, F("%s ~ %s", msg, e.Error()), []interface{}{})
-		if IsDebugLow() {
-			return stacktrace.Propagate(e, msg, 3)
-		}
-		return fmt.Errorf("~ %s\n%s", msg, e.Error())
-	}
-
-	err := fmt.Errorf("err is nil! Need to add if err != nil")
-	LogErr.Err(stacktrace.Propagate(err, msg, 3)).Msg("err is nil! Need to add if err != nil")
-
-	return nil
 }
 
 // LogErrorMail handles logging of an error and mail it to self
@@ -191,6 +310,6 @@ func (e *ErrorGroup) Err() error {
 // ErrJSON returns to the echo.Context a formatted
 func ErrJSON(HTTPStatus int, err error, args ...interface{}) error {
 	msg := ArgsErrMsg(args...)
-	LogError(stacktrace.Propagate(err, msg, 3))
+	LogError(err)
 	return echo.NewHTTPError(HTTPStatus, M("message", msg, "error", ErrMsg(err)))
 }

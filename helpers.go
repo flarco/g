@@ -260,6 +260,15 @@ func MapToKVArr(properties map[string]string) []string {
 	return props
 }
 
+// MapKeys returns the keys of a map
+func MapKeys(m map[string]interface{}) []string {
+	keys := []string{}
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // Must panics on error
 func Must(e error) {
 	if e != nil {

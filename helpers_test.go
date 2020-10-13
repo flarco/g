@@ -125,3 +125,37 @@ func TestError(t *testing.T) {
 	err3 := Error(err2, "additional details on top")
 	LogFatal(err3)
 }
+
+type wrapError struct {
+	msg string
+	err error
+}
+
+func (e *wrapError) Error() string {
+	return e.msg
+}
+
+func (e *wrapError) Unwrap() error {
+	return e.err
+}
+
+func TestError2(t *testing.T) {
+	e0 := fmt.Errorf("my error failure")
+	e1 := Error(e0, "level 1")
+	e2 := Error(e1, "level 2")
+	println(e1.Error())
+	println()
+	println(e2.Error())
+
+	et1 := e1.(*ErrType)
+	et2 := e2.(*ErrType)
+	P(et1)
+	P(et2)
+	assert.Equal(t, et1.Err, et2.Err)
+	println(et2.Debug())
+}
+
+func TestExists(t *testing.T) {
+	assert.True(t, PathExists("/root"))
+	assert.False(t, PathExists("/roodadat"))
+}

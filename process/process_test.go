@@ -14,7 +14,7 @@ func TestProcess(t *testing.T) {
 	assert.NoError(t, err)
 
 	c := 0
-	proc.SetScanner(true, true, func(s, t string) { c++ })
+	proc.SetScanner(func(se bool, t string) { c++ })
 	err = proc.Start()
 	assert.NoError(t, err)
 
@@ -22,4 +22,20 @@ func TestProcess(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Greater(t, c, 0)
+}
+
+func TestSession(t *testing.T) {
+	sess := NewSession()
+
+	err := sess.Run("ls", "-l")
+	assert.NoError(t, err)
+
+	c := 0
+	sess.SetScanner(func(se bool, t string) { c++ })
+	err = sess.Run("ls", "-l", "/")
+	assert.NoError(t, err)
+
+	assert.Greater(t, c, 0)
+
+	// println(sess.Stdout)
 }
