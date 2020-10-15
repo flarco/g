@@ -64,7 +64,7 @@ func VerifyHash(raw, hash string) (bool, error) {
 	return hashEqual(rhash, hsh), nil
 }
 
-//bytes comparisons
+// bytes comparisons
 func hashEqual(h1, h2 []byte) bool {
 	diff := uint32(len(h1)) ^ uint32(len(h2))
 	for i := 0; i < len(h1) && i < len(h2); i++ {
@@ -109,4 +109,3 @@ func RandInt(max int) int {
 	}
 	return rand2.Intn(max)
 }
-
