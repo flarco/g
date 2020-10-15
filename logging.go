@@ -300,6 +300,7 @@ func LogFatal(E error, args ...interface{}) {
 		err, ok := E.(*ErrType)
 		if !ok {
 			println(color.RedString(E.Error()))
+			os.Exit(1)
 		}
 
 		if !IsDebugLow() {
