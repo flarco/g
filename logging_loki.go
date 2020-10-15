@@ -38,6 +38,7 @@ type lokiEvent struct {
 	Streams []lokiStream `json:"streams"`
 }
 
+// lokiSendBatch send a batch
 func lokiSendBatch(URL string, batch lokiBatch) {
 	// ensures only 1 instance of lokiSendBatch is running
 	lokiMux.Lock()
