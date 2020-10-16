@@ -139,13 +139,27 @@ func (c *Cache) Get(key string) (value map[string]interface{}, err error) {
 	return c.GetContext(c.Context.Ctx, key)
 }
 
-// GetContext save a key/value pair from the designated cache table with context
+// GetContext get a key/value pair from the designated cache table with context
 func (c *Cache) GetContext(ctx context.Context, key string) (value map[string]interface{}, err error) {
 	sql := g.R(
 		"SELECT value from {table} where key = $1",
 		"table", TableName,
 	)
 	return c.GetContextSQL(ctx, sql, key)
+}
+
+// GetLike get a key/value pair from the designated cache table with a key LIKE filter
+func (c *Cache) GetLike(pattern string) (values []map[string]interface{}, err error) {
+	return c.GetLikeContext(c.Context.Ctx, pattern)
+}
+
+// GetLikeContext get a key/value pair from the designated cache table with a key LIKE filter with context
+func (c *Cache) GetLikeContext(ctx context.Context, pattern string) (values []map[string]interface{}, err error) {
+	sql := g.R(
+		"SELECT value from {table} where key LIKE $1",
+		"table", TableName,
+	)
+	return c.SelectContextSQL(ctx, sql, pattern)
 }
 
 // Pop get a key/value pair from the designated cache table after deleting it
@@ -155,6 +169,15 @@ func (c *Cache) Pop(key string) (value map[string]interface{}, err error) {
 		"table", TableName,
 	)
 	return c.GetContextSQL(c.Context.Ctx, sql, key)
+}
+
+// PopLike get key/value pairs from the designated cache table after deleting them
+func (c *Cache) PopLike(pattern string) (values []map[string]interface{}, err error) {
+	sql := g.R(
+		"delete from {table} where key LIKE $1 returning value",
+		"table", TableName,
+	)
+	return c.SelectContextSQL(c.Context.Ctx, sql, pattern)
 }
 
 // GetContextSQL save a key/value pair from the designated cache table with context
@@ -169,6 +192,29 @@ func (c *Cache) GetContextSQL(ctx context.Context, sql, key string) (value map[s
 	err = g.Unmarshal(valueStr, &value)
 	if err != nil {
 		err = g.Error(err, "could not parse value for %s", key)
+	}
+
+	return
+}
+
+// SelectContextSQL save a key/value pair from the designated cache table with context
+func (c *Cache) SelectContextSQL(ctx context.Context, sql, pattern string) (values []map[string]interface{}, err error) {
+	var valueArr []string
+	err = c.db.SelectContext(ctx, &valueArr, sql, pattern)
+	if err != nil {
+		err = g.Error(err, "could not get values for %s", pattern)
+		return
+	}
+
+	values = make([]map[string]interface{}, len(valueArr))
+	for i, valueStr := range valueArr {
+		val := g.M()
+		err = g.Unmarshal(valueStr, &val)
+		if err != nil {
+			err = g.Error(err, "could not parse value for %s", pattern)
+			break
+		}
+		values[i] = val
 	}
 
 	return
