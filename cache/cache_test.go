@@ -62,25 +62,28 @@ func TestSetGet(t *testing.T) {
 	}
 	defer c.dropTable()
 
-	err = c.Set("key-1", g.M("error", "a stupid one"))
+	err = c.DeleteExpired()
+	assert.NoError(t, err)
+
+	err = c.Set("key-1", "a stupid error")
 	assert.NoError(t, err)
 
 	arr := []interface{}{1, "a", true}
 	m := g.M("a", arr)
-	err = c.Set("key-2", g.M("nested", m, "arr", arr))
+	err = c.SetM("key-2", g.M("nested", m, "arr", arr))
 	assert.NoError(t, err)
 
-	vals, err := c.GetLike("key-%")
+	vals, err := c.GetLikeM("key-%")
 	assert.Len(t, vals, 2)
 
 	val, err := c.Get("key-1")
-	assert.Equal(t, "a stupid one", val["error"])
+	assert.Equal(t, "a stupid error", val)
 
-	err = c.SetEx("key-1", g.M("error", "another stupid one"), 1)
+	err = c.SetEx("key-1", "another stupid error", 1)
 	assert.NoError(t, err)
 
 	val, err = c.Get("key-1")
-	assert.Equal(t, "another stupid one", val["error"])
+	assert.Equal(t, "another stupid error", val)
 
 	time.Sleep(2 * time.Second)
 
@@ -88,14 +91,14 @@ func TestSetGet(t *testing.T) {
 	_, err = c.Get("key-1")
 	assert.Error(t, err)
 
-	val, err = c.Pop("key-2")
+	valM, err := c.PopM("key-2")
 	assert.NoError(t, err)
 
-	arr2 := cast.ToStringMap(val["nested"])["a"]
+	arr2 := cast.ToStringMap(valM["nested"])["a"]
 	assert.Equal(t, cast.ToString(arr), cast.ToString(arr2))
-	assert.Equal(t, cast.ToString(arr), cast.ToString(val["arr"]))
+	assert.Equal(t, cast.ToString(arr), cast.ToString(valM["arr"]))
 
 	// should not be there since popped
-	_, err = c.Get("key-2")
+	_, err = c.GetM("key-2")
 	assert.Error(t, err)
 }

@@ -11,6 +11,9 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 )
 
+// the key to user for single value maps
+const valKey = "v"
+
 // TableName is the table name to use for the cache table
 var TableName = "__cache__"
 
@@ -84,13 +87,32 @@ func (c *Cache) dropTable() (err error) {
 	return
 }
 
+// DeleteExpired delets all expired records from cache table
+func (c *Cache) DeleteExpired() (err error) {
+	_, err = c.db.Exec(g.F("delete from %s where expire_dt < now()", TableName))
+	if err != nil {
+		err = g.Error(err, "could not delete expired rows")
+	}
+	return
+}
+
 // Set save a key/value pair into the designated cache table
-func (c *Cache) Set(key string, value map[string]interface{}) (err error) {
+func (c *Cache) Set(key string, value interface{}) (err error) {
+	return c.SetContext(c.Context.Ctx, key, g.M(valKey, value))
+}
+
+// SetM save a key/value pair into the designated cache table
+func (c *Cache) SetM(key string, value map[string]interface{}) (err error) {
 	return c.SetContext(c.Context.Ctx, key, value)
 }
 
 // SetEx save a key/value pair into the designated cache table which expires after a specified time
-func (c *Cache) SetEx(key string, value map[string]interface{}, expire int) (err error) {
+func (c *Cache) SetEx(key string, value interface{}, expire int) (err error) {
+	return c.SetContext(c.Context.Ctx, key, g.M(valKey, value), expire)
+}
+
+// SetExM save a key/value pair into the designated cache table which expires after a specified time
+func (c *Cache) SetExM(key string, value map[string]interface{}, expire int) (err error) {
 	return c.SetContext(c.Context.Ctx, key, value, expire)
 }
 
@@ -135,8 +157,110 @@ func (c *Cache) SetContext(ctx context.Context, key string, value map[string]int
 }
 
 // Get get a key/value pair from the designated cache table
-func (c *Cache) Get(key string) (value map[string]interface{}, err error) {
-	return c.GetContext(c.Context.Ctx, key)
+func (c *Cache) Get(key string) (value interface{}, err error) {
+	valM, err := c.GetContext(c.Context.Ctx, key)
+	if err != nil {
+		err = g.Error(err, "could not get value for %s", key)
+		return
+	}
+	value = valM[valKey]
+	return
+}
+
+// GetM get a key/value pair from the designated cache table
+func (c *Cache) GetM(key string) (value map[string]interface{}, err error) {
+	value, err = c.GetContext(c.Context.Ctx, key)
+	if err != nil {
+		err = g.Error(err, "could not get map value for %s", key)
+	}
+	return
+}
+
+// GetLike get a key/value pair from the designated cache table with a key LIKE filter
+func (c *Cache) GetLike(pattern string) (values []interface{}, err error) {
+	valArrM, err := c.GetLikeContext(c.Context.Ctx, pattern)
+	if err != nil {
+		err = g.Error(err, "could not get values like %s", pattern)
+		return
+	}
+	values = make([]interface{}, len(valArrM))
+	for i, m := range valArrM {
+		values[i] = m[valKey]
+	}
+	return
+}
+
+// GetLikeM get a key/value pair from the designated cache table with a key LIKE filter
+func (c *Cache) GetLikeM(pattern string) (values []map[string]interface{}, err error) {
+	values, err = c.GetLikeContext(c.Context.Ctx, pattern)
+	if err != nil {
+		err = g.Error(err, "could not get map values like %s", pattern)
+	}
+	return
+}
+
+// Pop get a key/value pair from the designated cache table after deleting it
+func (c *Cache) Pop(key string) (value interface{}, err error) {
+	sql := g.R(
+		"delete from {table} where key = $1 returning value",
+		"table", TableName,
+	)
+
+	valM, err := c.GetContextSQL(c.Context.Ctx, sql, key)
+	if err != nil {
+		err = g.Error(err, "could not get value for %s", key)
+		return
+	}
+	value = valM[valKey]
+
+	return
+}
+
+// PopM get a key/value pair from the designated cache table after deleting it
+func (c *Cache) PopM(key string) (value map[string]interface{}, err error) {
+	sql := g.R(
+		"delete from {table} where key = $1 returning value",
+		"table", TableName,
+	)
+	value, err = c.GetContextSQL(c.Context.Ctx, sql, key)
+	if err != nil {
+		err = g.Error(err, "could not get map value for %s", key)
+	}
+	return
+}
+
+// PopLike get key/value pairs from the designated cache table after deleting them
+func (c *Cache) PopLike(pattern string) (values []interface{}, err error) {
+	sql := g.R(
+		"delete from {table} where key LIKE $1 returning value",
+		"table", TableName,
+	)
+
+	valArrM, err := c.SelectContextSQL(c.Context.Ctx, sql, pattern)
+	if err != nil {
+		err = g.Error(err, "could not pop values like %s", pattern)
+		return
+	}
+
+	values = make([]interface{}, len(valArrM))
+	for i, m := range valArrM {
+		values[i] = m[valKey]
+	}
+	return
+}
+
+// PopLikeM get key/value pairs from the designated cache table after deleting them
+func (c *Cache) PopLikeM(pattern string) (values []map[string]interface{}, err error) {
+	sql := g.R(
+		"delete from {table} where key LIKE $1 returning value",
+		"table", TableName,
+	)
+
+	values, err = c.SelectContextSQL(c.Context.Ctx, sql, pattern)
+	if err != nil {
+		err = g.Error(err, "could not pop map values like %s", pattern)
+	}
+	return
 }
 
 // GetContext get a key/value pair from the designated cache table with context
@@ -148,11 +272,6 @@ func (c *Cache) GetContext(ctx context.Context, key string) (value map[string]in
 	return c.GetContextSQL(ctx, sql, key)
 }
 
-// GetLike get a key/value pair from the designated cache table with a key LIKE filter
-func (c *Cache) GetLike(pattern string) (values []map[string]interface{}, err error) {
-	return c.GetLikeContext(c.Context.Ctx, pattern)
-}
-
 // GetLikeContext get a key/value pair from the designated cache table with a key LIKE filter with context
 func (c *Cache) GetLikeContext(ctx context.Context, pattern string) (values []map[string]interface{}, err error) {
 	sql := g.R(
@@ -160,24 +279,6 @@ func (c *Cache) GetLikeContext(ctx context.Context, pattern string) (values []ma
 		"table", TableName,
 	)
 	return c.SelectContextSQL(ctx, sql, pattern)
-}
-
-// Pop get a key/value pair from the designated cache table after deleting it
-func (c *Cache) Pop(key string) (value map[string]interface{}, err error) {
-	sql := g.R(
-		"delete from {table} where key = $1 returning value",
-		"table", TableName,
-	)
-	return c.GetContextSQL(c.Context.Ctx, sql, key)
-}
-
-// PopLike get key/value pairs from the designated cache table after deleting them
-func (c *Cache) PopLike(pattern string) (values []map[string]interface{}, err error) {
-	sql := g.R(
-		"delete from {table} where key LIKE $1 returning value",
-		"table", TableName,
-	)
-	return c.SelectContextSQL(c.Context.Ctx, sql, pattern)
 }
 
 // GetContextSQL save a key/value pair from the designated cache table with context

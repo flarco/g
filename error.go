@@ -155,23 +155,8 @@ func Error(e interface{}, args ...interface{}) error {
 	}
 }
 
-// ErrorOld returns stacktrace error with message
-func ErrorOld(e error, args ...interface{}) error {
-	msg := ArgsErrMsg(args...)
-
-	if e != nil {
-		// doHooks(zerolog.DebugLevel, F("%s ~ %s", msg, e.Error()), []interface{}{})
-		if IsDebugLow() {
-			return stacktrace.Propagate(e, msg, 3)
-		}
-		return fmt.Errorf("~ %s\n%s", msg, e.Error())
-	}
-
-	err := fmt.Errorf("err is nil! Need to add if err != nil")
-	LogErr.Err(stacktrace.Propagate(err, msg, 3)).Msg("err is nil! Need to add if err != nil")
-
-	return nil
-}
+// ErrorIf allows use of `ErrorIf(err)` without the `if err != nil `
+var ErrorIf = Error
 
 // IsErr : checks for error
 func IsErr(err error, msg string) bool {
