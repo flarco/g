@@ -38,12 +38,12 @@ const (
 
 func init() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if os.Getenv("SLINGELT_DEBUG_CALLER_LEVEL") != "" {
-		CallerLevel = cast.ToInt(os.Getenv("SLINGELT_DEBUG_CALLER_LEVEL"))
+	if os.Getenv("SLING_DEBUG_CALLER_LEVEL") != "" {
+		CallerLevel = cast.ToInt(os.Getenv("SLING_DEBUG_CALLER_LEVEL"))
 	}
-	if os.Getenv("SLINGELT_DEBUG") == "TRACE" {
+	if os.Getenv("SLING_DEBUG") == "TRACE" {
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	} else if os.Getenv("SLINGELT_DEBUG") != "" {
+	} else if os.Getenv("SLING_DEBUG") != "" {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
@@ -59,12 +59,12 @@ func init() {
 	// 	zlog.Logger = zerolog.New(outputErr).With().Timestamp().Logger()
 	// }
 
-	if os.Getenv("SLINGELT_LOGGING") == "TASK" {
+	if os.Getenv("SLING_LOGGING") == "TASK" {
 		outputOut.NoColor = true
 		outputErr.NoColor = true
 		LogOut = zerolog.New(outputOut).With().Timestamp().Logger()
 		LogErr = zerolog.New(outputErr).With().Timestamp().Logger()
-	} else if os.Getenv("SLINGELT_LOGGING") == "MASTER" || os.Getenv("SLINGELT_LOGGING") == "WORKER" {
+	} else if os.Getenv("SLING_LOGGING") == "MASTER" || os.Getenv("SLING_LOGGING") == "WORKER" {
 		zerolog.LevelFieldName = "lvl"
 		zerolog.MessageFieldName = "msg"
 		LogOut = zerolog.New(os.Stdout).With().Timestamp().Logger()
@@ -81,7 +81,7 @@ func init() {
 
 // IsTask returns true is is TASK
 func IsTask() bool {
-	return os.Getenv("SLINGELT_LOGGING") == "TASK"
+	return os.Getenv("SLING_LOGGING") == "TASK"
 }
 
 // GetType : return the type of an interface

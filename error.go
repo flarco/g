@@ -192,8 +192,8 @@ func isErrP(err error, msg string, callerSkip int) bool {
 
 // LogError handles logging of an error, useful for reporting
 func LogError(E error, args ...interface{}) {
-	msg := ArgsErrMsg(args...)
 	if E != nil {
+		msg := ArgsErrMsg(args...)
 		doHooks(zerolog.DebugLevel, E.Error(), args)
 		if IsTask() {
 			simpleErr := errors.New(ErrMsgSimple(E))

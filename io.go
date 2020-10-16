@@ -2,13 +2,14 @@ package gutil
 
 import (
 	"bufio"
-	"github.com/markbates/pkger"
-	"github.com/markbates/pkger/pkging"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
+
+	"github.com/markbates/pkger"
+	"github.com/markbates/pkger/pkging"
 )
 
 // UserHomeDir returns the home directory of the running user
@@ -70,4 +71,3 @@ func PkgerFile(name string) (file pkging.File, err error) {
 	}
 	return TemplateFile, nil
 }
-

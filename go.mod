@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/fatih/color v1.9.0
+	github.com/gobuffalo/here v0.6.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/integrii/flaggy v1.4.4
 	github.com/jaypipes/ghw v0.6.1
