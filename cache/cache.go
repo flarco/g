@@ -176,11 +176,20 @@ func (c *Cache) GetM(key string) (value map[string]interface{}, err error) {
 	return
 }
 
-// GetLike get a key/value pair from the designated cache table with a key LIKE filter
-func (c *Cache) GetLike(pattern string) (values []interface{}, err error) {
-	valArrM, err := c.GetLikeContext(c.Context.Ctx, pattern)
+// GetLikeKeys gets keys from the designated cache table with a key LIKE filter
+func (c *Cache) GetLikeKeys(pattern string) (values []string, err error) {
+	values, err = c.GetLikeKeysContext(c.Context.Ctx, pattern)
 	if err != nil {
-		err = g.Error(err, "could not get values like %s", pattern)
+		err = g.Error(err, "could not get keys like %s", pattern)
+	}
+	return
+}
+
+// GetLikeValues get a key/value pair from the designated cache table with a key LIKE filter
+func (c *Cache) GetLikeValues(pattern string) (values []interface{}, err error) {
+	valArrM, err := c.GetLikeValuesContext(c.Context.Ctx, pattern)
+	if err != nil {
+		err = g.Error(err, "could not get values with keys like %s", pattern)
 		return
 	}
 	values = make([]interface{}, len(valArrM))
@@ -190,11 +199,11 @@ func (c *Cache) GetLike(pattern string) (values []interface{}, err error) {
 	return
 }
 
-// GetLikeM get a key/value pair from the designated cache table with a key LIKE filter
-func (c *Cache) GetLikeM(pattern string) (values []map[string]interface{}, err error) {
-	values, err = c.GetLikeContext(c.Context.Ctx, pattern)
+// GetLikeValuesM get a key/value pair from the designated cache table with a key LIKE filter
+func (c *Cache) GetLikeValuesM(pattern string) (values []map[string]interface{}, err error) {
+	values, err = c.GetLikeValuesContext(c.Context.Ctx, pattern)
 	if err != nil {
-		err = g.Error(err, "could not get map values like %s", pattern)
+		err = g.Error(err, "could not get map values with keys like %s", pattern)
 	}
 	return
 }
@@ -272,8 +281,23 @@ func (c *Cache) GetContext(ctx context.Context, key string) (value map[string]in
 	return c.GetContextSQL(ctx, sql, key)
 }
 
-// GetLikeContext get a key/value pair from the designated cache table with a key LIKE filter with context
-func (c *Cache) GetLikeContext(ctx context.Context, pattern string) (values []map[string]interface{}, err error) {
+// GetLikeKeysContext get keys from the designated cache table with a key LIKE filter with context
+func (c *Cache) GetLikeKeysContext(ctx context.Context, pattern string) (values []string, err error) {
+	sql := g.R(
+		"SELECT key from {table} where key LIKE $1",
+		"table", TableName,
+	)
+
+	err = c.db.SelectContext(ctx, &values, sql, pattern)
+	if err != nil {
+		err = g.Error(err, "could not get key for %s", pattern)
+	}
+
+	return
+}
+
+// GetLikeValuesContext get a key/value pair from the designated cache table with a key LIKE filter with context
+func (c *Cache) GetLikeValuesContext(ctx context.Context, pattern string) (values []map[string]interface{}, err error) {
 	sql := g.R(
 		"SELECT value from {table} where key LIKE $1",
 		"table", TableName,

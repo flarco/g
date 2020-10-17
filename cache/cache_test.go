@@ -73,7 +73,10 @@ func TestSetGet(t *testing.T) {
 	err = c.SetM("key-2", g.M("nested", m, "arr", arr))
 	assert.NoError(t, err)
 
-	vals, err := c.GetLikeM("key-%")
+	keys, err := c.GetLikeKeys("key-%")
+	assert.Len(t, keys, 2)
+
+	vals, err := c.GetLikeValuesM("key-%")
 	assert.Len(t, vals, 2)
 
 	val, err := c.Get("key-1")
