@@ -19,14 +19,14 @@ var TableName = "__cache__"
 
 // TableDDL is the table DDL if manually creating
 var TableDDL = g.R(`
-	CREATE TABLE {table} (
+	CREATE TABLE IF NOT EXISTS {table} (
 		"key" text NOT NULL,
 		value jsonb NOT NULL DEFAULT '{}'::jsonb,
 		expire_dt timestamp NULL,
 		updated_dt timestamp NULL,
 		CONSTRAINT caches_pkey PRIMARY KEY (key)
 	);
-	CREATE INDEX idx_cache_expire_dt ON {table} USING btree (expire_dt);
+	CREATE INDEX IF NOT EXISTS idx_cache_expire_dt ON {table} USING btree (expire_dt);
 	`, "table", TableName,
 )
 
@@ -45,13 +45,16 @@ func (Table) TableName() string {
 
 // Cache is a Postgres Cache Backend
 type Cache struct {
-	Context   g.Context
-	mux       sync.Mutex
-	db        *sqlx.DB
-	listeners cmap.ConcurrentMap
-	dbURL     string
-	setStmt   *sql.Stmt
-	getStmt   *sql.Stmt
+	Context       g.Context
+	mux           sync.Mutex
+	db            *sqlx.DB
+	listeners     cmap.ConcurrentMap
+	defChannel    string // Default listener channel
+	dbURL         string
+	setStmt       *sql.Stmt
+	getStmt       *sql.Stmt
+	handlers      funcMap
+	replyHandlers replyMap
 }
 
 // NewCache creates a new cache instance
@@ -63,11 +66,17 @@ func NewCache(dbURL string) (c *Cache, err error) {
 	}
 
 	c = &Cache{
-		Context:   g.NewContext(context.Background()),
-		db:        db,
-		dbURL:     dbURL,
-		listeners: cmap.New(),
+		Context:       g.NewContext(context.Background()),
+		db:            db,
+		dbURL:         dbURL,
+		listeners:     cmap.New(),
+		handlers:      funcMap{},
+		replyHandlers: replyMap{},
 	}
+
+	// create default listener
+	c.subscribeDefault()
+
 	return c, nil
 }
 

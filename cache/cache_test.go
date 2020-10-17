@@ -7,7 +7,9 @@ import (
 
 	"github.com/spf13/cast"
 
+	"github.com/flarco/gutil"
 	g "github.com/flarco/gutil"
+	"github.com/flarco/gutil/net"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,6 +34,31 @@ func TestPubSub(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(300 * time.Millisecond)
 	assert.True(t, received)
+
+	msg := net.NewMessage(
+		net.MessageType("ping"),
+		gutil.M("test", "ing"),
+	)
+
+	callback2 := func(p string) {
+		msg2, err := net.NewMessageFromJSON([]byte(p))
+		assert.NoError(t, err)
+
+		srcChannel := cast.ToString(msg2.Data["src_channel"])
+		msg3 := net.NewMessage(
+			net.MessageType("pong"),
+			gutil.M("test", "received"),
+			msg2.ReqID, // OrigReqID needs to be specified !
+		)
+		c.PublishMsg(srcChannel, msg3)
+	}
+	_, err = c.Subscribe("test_chan2", callback2)
+	assert.NoError(t, err)
+
+	rMsg, err := c.PublishMsgWait("test_chan2", msg, 2)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "received", rMsg.Data["test"])
 }
 
 func TestLock(t *testing.T) {
