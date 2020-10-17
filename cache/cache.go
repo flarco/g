@@ -71,6 +71,23 @@ func NewCache(dbURL string) (c *Cache, err error) {
 	return c, nil
 }
 
+// Db returns the db connection
+func (c *Cache) Db() *sqlx.DB {
+	return c.db
+}
+
+// Close closes the cache connection
+func (c *Cache) Close() {
+	defer c.Context.Cancel()
+	for _, listenerI := range c.listeners.Items() {
+		listener, ok := listenerI.(*Listener)
+		if ok {
+			listener.Close()
+		}
+	}
+	c.db.Close()
+}
+
 func (c *Cache) createTable() (err error) {
 	_, err = c.db.Exec(TableDDL)
 	if err != nil {

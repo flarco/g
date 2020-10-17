@@ -25,7 +25,7 @@ func TestPubSub(t *testing.T) {
 		assert.Equal(t, p, payload)
 		received = true
 	}
-	err = c.Subscribe("test_chan", callback)
+	_, err = c.Subscribe("test_chan", callback)
 	assert.NoError(t, err)
 
 	err = c.Publish("test_chan", payload)
