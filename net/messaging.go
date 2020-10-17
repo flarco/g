@@ -46,6 +46,23 @@ func (msg *Message) JSON() []byte {
 	return jBytes
 }
 
+// Text returns the text value and deletes it from data map
+func (msg *Message) Text() string {
+	text := cast.ToString(msg.Data["text"])
+	delete(msg.Data, "text")
+	return text
+}
+
+// Unmarshal parses a payload of JSON string into pointer
+func (msg *Message) Unmarshal(objPtr interface{}) error {
+	payload := cast.ToString(msg.Data["payload"])
+	err := json.Unmarshal([]byte(payload), objPtr)
+	if err != nil {
+		err = gutil.Error(err, "could not unmarshal")
+	}
+	return err
+}
+
 // Payload returns the string payload
 func (msg *Message) Payload() string {
 	return cast.ToString(msg.Data["payload"])

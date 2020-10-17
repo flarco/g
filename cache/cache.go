@@ -70,6 +70,11 @@ func NewCache(dbURL string) (c *Cache, err error) {
 		listeners: cmap.New(),
 	}
 
+	err = c.createTable()
+	if err != nil {
+		return c, g.Error(err, "could not create cache table")
+	}
+
 	// create default listener
 	c.subscribeDefault()
 

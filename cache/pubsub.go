@@ -60,10 +60,16 @@ func (l *Listener) ProcessMsg(msg net.Message) {
 		rMsg = net.NewMessageErr(err)
 	}
 
+	toChannel := cast.ToString(rMsg.Data["to_channel"])
+	if toChannel != "" {
+		delete(rMsg.Data, "to_channel")
+	} else {
+		toChannel = cast.ToString(msg.Data["from_channel"])
+	}
+
 	rMsg.OrigReqID = msg.ReqID
-	srcChannel := cast.ToString(msg.Data["src_channel"])
-	if rMsg.Type != net.NoReplyMsgType && srcChannel != l.Channel {
-		err = g.ErrorIf(l.c.Publish(srcChannel, rMsg))
+	if rMsg.Type != net.NoReplyMsgType && toChannel != l.Channel {
+		err = g.ErrorIf(l.c.Publish(toChannel, rMsg))
 	} else if rMsg.IsError() {
 		err = g.Error(rMsg.Error)
 	}
@@ -179,7 +185,7 @@ func (c *Cache) publish(channel string, payload string) (err error) {
 
 // Publish a message to a PG notification channel
 func (c *Cache) Publish(channel string, msg net.Message) (err error) {
-	msg.Data["src_channel"] = c.defChannel
+	msg.Data["from_channel"] = c.defChannel
 	err = c.publish(channel, string(msg.JSON()))
 	if err != nil {
 		err = g.Error(err, "unable to publish msg to "+channel)
