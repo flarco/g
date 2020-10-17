@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/flarco/gutil"
+	"github.com/spf13/cast"
 )
 
 // MessageType is an enum type for messages
@@ -45,6 +46,11 @@ func (msg *Message) JSON() []byte {
 	return jBytes
 }
 
+// Payload returns the string payload
+func (msg *Message) Payload() string {
+	return cast.ToString(msg.Data["payload"])
+}
+
 // IsError returns true if an error message
 func (msg *Message) IsError() bool {
 	return msg.Type == ErrMsgType
@@ -61,6 +67,21 @@ func NewMessage(msgType MessageType, data map[string]interface{}, orgReqID ...st
 		ReqID:     gutil.NewTsID("msg"),
 		Type:      msgType,
 		Data:      data,
+		OrigReqID: OrigReqID,
+	}
+}
+
+// NewMessagePayload creates a new message with a map
+func NewMessagePayload(msgType MessageType, payload string, orgReqID ...string) Message {
+	OrigReqID := ""
+	if len(orgReqID) > 0 {
+		OrigReqID = orgReqID[0]
+	}
+
+	return Message{
+		ReqID:     gutil.NewTsID("msg"),
+		Type:      msgType,
+		Data:      gutil.M("payload", payload),
 		OrigReqID: OrigReqID,
 	}
 }

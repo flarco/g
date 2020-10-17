@@ -45,16 +45,14 @@ func (Table) TableName() string {
 
 // Cache is a Postgres Cache Backend
 type Cache struct {
-	Context       g.Context
-	mux           sync.Mutex
-	db            *sqlx.DB
-	listeners     cmap.ConcurrentMap
-	defChannel    string // Default listener channel
-	dbURL         string
-	setStmt       *sql.Stmt
-	getStmt       *sql.Stmt
-	handlers      funcMap
-	replyHandlers replyMap
+	Context    g.Context
+	mux        sync.Mutex
+	db         *sqlx.DB
+	listeners  cmap.ConcurrentMap
+	defChannel string // Default listener channel
+	dbURL      string
+	setStmt    *sql.Stmt
+	getStmt    *sql.Stmt
 }
 
 // NewCache creates a new cache instance
@@ -66,12 +64,10 @@ func NewCache(dbURL string) (c *Cache, err error) {
 	}
 
 	c = &Cache{
-		Context:       g.NewContext(context.Background()),
-		db:            db,
-		dbURL:         dbURL,
-		listeners:     cmap.New(),
-		handlers:      funcMap{},
-		replyHandlers: replyMap{},
+		Context:   g.NewContext(context.Background()),
+		db:        db,
+		dbURL:     dbURL,
+		listeners: cmap.New(),
 	}
 
 	// create default listener

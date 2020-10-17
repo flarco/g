@@ -23,41 +23,45 @@ func TestPubSub(t *testing.T) {
 	payload := "1234567"
 
 	received := false
-	callback := func(p string) {
-		assert.Equal(t, p, payload)
-		received = true
+	handlers := HandlerMap{
+		net.MessageType("test"): func(msg net.Message) (rMsg net.Message) {
+			assert.Equal(t, msg.Payload(), payload)
+			received = true
+			return
+		},
 	}
-	_, err = c.Subscribe("test_chan", callback)
+	_, err = c.Subscribe("test_chan", handlers)
 	assert.NoError(t, err)
 
-	err = c.Publish("test_chan", payload)
+	msg := net.NewMessagePayload(
+		net.MessageType("test"),
+		payload,
+	)
+	err = c.Publish("test_chan", msg)
 	assert.NoError(t, err)
 	time.Sleep(300 * time.Millisecond)
 	assert.True(t, received)
 
-	msg := net.NewMessage(
+	msg = net.NewMessage(
 		net.MessageType("ping"),
 		gutil.M("test", "ing"),
 	)
 
-	callback2 := func(p string) {
-		msg2, err := net.NewMessageFromJSON([]byte(p))
-		assert.NoError(t, err)
-
-		srcChannel := cast.ToString(msg2.Data["src_channel"])
-		msg3 := net.NewMessage(
-			net.MessageType("pong"),
-			gutil.M("test", "received"),
-			msg2.ReqID, // OrigReqID needs to be specified !
-		)
-		c.PublishMsg(srcChannel, msg3)
+	handlers = HandlerMap{
+		net.MessageType("ping"): func(msg net.Message) (rMsg net.Message) {
+			return net.NewMessage(
+				net.MessageType("pong"),
+				gutil.M("test", "received"),
+			)
+		},
 	}
-	_, err = c.Subscribe("test_chan2", callback2)
+	_, err = c.Subscribe("test_chan2", handlers)
 	assert.NoError(t, err)
 
-	rMsg, err := c.PublishMsgWait("test_chan2", msg, 2)
+	rMsg, err := c.PublishWait("test_chan2", msg, 2)
 	assert.NoError(t, err)
 
+	assert.EqualValues(t, "pong", rMsg.Type)
 	assert.Equal(t, "received", rMsg.Data["test"])
 }
 
