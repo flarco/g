@@ -56,7 +56,7 @@ type Cache struct {
 }
 
 // NewCache creates a new cache instance
-func NewCache(dbURL string) (c *Cache, err error) {
+func NewCache(dbURL string, name ...string) (c *Cache, err error) {
 	db, err := sqlx.Open("postgres", dbURL)
 	if err != nil {
 		err = g.Error(err, "Could not initialize cache database connection")
@@ -76,7 +76,11 @@ func NewCache(dbURL string) (c *Cache, err error) {
 	}
 
 	// create default listener
-	c.subscribeDefault()
+	chanName := g.RandString(g.AlphaRunes, 7)
+	if len(name) > 0 {
+		chanName = name[0]
+	}
+	c.subscribeDefault(chanName)
 
 	return c, nil
 }

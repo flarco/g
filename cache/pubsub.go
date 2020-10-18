@@ -99,11 +99,13 @@ func (l *Listener) ListenLoop() {
 	}
 }
 
-// AddHandler adds a handler for an incoming message type
-func (l *Listener) AddHandler(msgType net.MessageType, handler HandlerFunc) {
+// AddHandlers adds handlers for incoming message types
+func (l *Listener) AddHandlers(handlers HandlerMap) {
 	l.mux.Lock()
 	defer l.mux.Unlock()
-	l.handlers[msgType] = handler
+	for msgType, handler := range handlers {
+		l.handlers[msgType] = handler
+	}
 }
 
 // AddReplyHandler adds a handler for an incoming reply
@@ -124,8 +126,8 @@ func (l *Listener) AddReplyHandler(reqID string, handler HandlerFunc, timeout ti
 }
 
 // subscribeDefault subs to a default channel
-func (c *Cache) subscribeDefault() {
-	c.defChannel = g.RandString(g.AlphaRunes, 7)
+func (c *Cache) subscribeDefault(chanName string) {
+	c.defChannel = chanName
 	c.Subscribe(c.defChannel, HandlerMap{})
 }
 
