@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/cast"
-
 	"github.com/flarco/gutil"
 	g "github.com/flarco/gutil"
 	"github.com/flarco/gutil/net"
@@ -113,6 +111,10 @@ func TestSetGet(t *testing.T) {
 	val, err := c.Get("key-1")
 	assert.Equal(t, "a stupid error", val)
 
+	found, err := c.Has("key-1")
+	assert.NoError(t, err)
+	assert.True(t, found)
+
 	err = c.SetEx("key-1", "another stupid error", 1)
 	assert.NoError(t, err)
 
@@ -122,17 +124,67 @@ func TestSetGet(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// should not be there since expired
-	_, err = c.Get("key-1")
-	assert.Error(t, err)
+	val, err = c.Get("key-1")
+	assert.NoError(t, err)
+	assert.Nil(t, val)
 
-	valM, err := c.PopM("key-2")
+	found, err = c.Has("key-1")
+	assert.NoError(t, err)
+	assert.False(t, found)
+
+	valM, err := c.Pop("key-2")
 	assert.NoError(t, err)
 
-	arr2 := cast.ToStringMap(valM["nested"])["a"]
-	assert.Equal(t, cast.ToString(arr), cast.ToString(arr2))
-	assert.Equal(t, cast.ToString(arr), cast.ToString(valM["arr"]))
-
 	// should not be there since popped
-	_, err = c.GetM("key-2")
-	assert.Error(t, err)
+	valM, err = c.GetM("key-2")
+	assert.NoError(t, err)
+	assert.Nil(t, valM)
+}
+
+func BenchmarkCachePGSet(b *testing.B) {
+	c, err := NewCache(dbURL)
+	gutil.LogFatal(err)
+	for n := 0; n < b.N; n++ {
+		c.Set("key-1", "a stupid error")
+	}
+}
+
+func BenchmarkCachePGGet(b *testing.B) {
+	c, err := NewCache(dbURL)
+	gutil.LogFatal(err)
+	c.Set("key-1", "a stupid error")
+	for n := 0; n < b.N; n++ {
+		c.Get("key-1")
+	}
+}
+
+func BenchmarkCachePGLock(b *testing.B) {
+	c, err := NewCache(dbURL)
+	gutil.LogFatal(err)
+	for n := 0; n < b.N; n++ {
+		c.Lock(LockType(1))
+		c.Unlock(LockType(1))
+	}
+}
+
+func BenchmarkCachePGPubSub(b *testing.B) {
+	c, err := NewCache(dbURL)
+	gutil.LogFatal(err)
+
+	handlers := HandlerMap{
+		net.MessageType("test"): func(msg net.Message) (rMsg net.Message) {
+			return
+		},
+	}
+
+	payload := "1234567"
+	msg := net.NewMessagePayload(
+		net.MessageType("test"),
+		payload,
+	)
+	_, err = c.Subscribe("test_chan", handlers)
+	for n := 0; n < b.N; n++ {
+		err = c.Publish("test_chan", msg)
+		gutil.LogFatal(err)
+	}
 }

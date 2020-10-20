@@ -3,6 +3,7 @@ module github.com/flarco/gutil
 go 1.15
 
 require (
+	github.com/allegro/bigcache/v2 v2.2.4
 	github.com/fatih/color v1.9.0
 	github.com/gobuffalo/here v0.6.0
 	github.com/gorilla/websocket v1.4.2

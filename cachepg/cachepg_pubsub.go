@@ -56,7 +56,7 @@ func (l *Listener) ProcessMsg(msg net.Message) {
 			rMsg = net.NoReplyMsg
 		}
 	} else {
-		err = g.Error(g.F("no handler for %s", msg.Type))
+		err = g.Error(g.F("no handler for %s - listener %s", msg.Type, l.Channel))
 		rMsg = net.NewMessageErr(err)
 	}
 
@@ -73,7 +73,7 @@ func (l *Listener) ProcessMsg(msg net.Message) {
 	} else if rMsg.IsError() {
 		err = g.Error(rMsg.Error)
 	}
-	g.LogError(err)
+	g.LogError(err, "error processing msg")
 }
 
 // ListenLoop is the loop process of a listener to receive a message
@@ -84,8 +84,11 @@ func (l *Listener) ListenLoop() {
 		case <-l.Context.Ctx.Done():
 			return
 		case n := <-l.listener.Notify:
+			if n == nil {
+				return
+			}
 			msg, err := net.NewMessageFromJSON([]byte(n.Extra))
-			g.LogError(err)
+			g.LogError(err, "error parsing msg")
 			if err == nil {
 				l.ProcessMsg(msg)
 			}
@@ -178,7 +181,7 @@ func (c *Cache) Subscribe(channel string, handlers HandlerMap) (l *Listener, err
 
 // publish to a PG notification channel
 func (c *Cache) publish(channel string, payload string) (err error) {
-	_, err = c.db.ExecContext(c.Context.Ctx, "SELECT pg_notify($1, $2)", channel, payload)
+	_, err = c.publishStmt.ExecContext(c.Context.Ctx, channel, payload)
 	if err != nil {
 		err = g.Error(err, "unable to publish payload to "+channel)
 	}
@@ -187,6 +190,11 @@ func (c *Cache) publish(channel string, payload string) (err error) {
 
 // Publish a message to a PG notification channel
 func (c *Cache) Publish(channel string, msg net.Message) (err error) {
+	if channel == "" {
+		return g.Error("empty channel provided")
+	} else if msg.Type == net.MessageType("") {
+		return nil
+	}
 	msg.Data["from_channel"] = c.defChannel
 	err = c.publish(channel, string(msg.JSON()))
 	if err != nil {
@@ -211,7 +219,7 @@ func (c *Cache) PublishWait(channel string, msg net.Message, timeOut ...int) (rM
 	replyChn := make(chan net.Message)
 	replyHandler := func(msg net.Message) net.Message {
 		replyChn <- msg
-		return net.AckMsg
+		return net.NoReplyMsg
 	}
 
 	c.DefListener().AddReplyHandler(msg.ReqID, replyHandler, to)

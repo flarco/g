@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,14 +46,21 @@ func (Table) TableName() string {
 
 // Cache is a Postgres Cache Backend
 type Cache struct {
-	Context    g.Context
-	mux        sync.Mutex
-	db         *sqlx.DB
-	listeners  cmap.ConcurrentMap
-	defChannel string // Default listener channel
-	dbURL      string
-	setStmt    *sql.Stmt
-	getStmt    *sql.Stmt
+	Context     g.Context
+	mux         sync.Mutex
+	db          *sqlx.DB
+	closed      bool
+	listeners   cmap.ConcurrentMap
+	defChannel  string // Default listener channel
+	dbURL       string
+	setStmt     *sql.Stmt
+	getStmt     *sql.Stmt
+	popStmt     *sql.Stmt
+	hasStmt     *sql.Stmt
+	publishStmt *sql.Stmt
+	lockStmt    *sql.Stmt
+	lockTryStmt *sql.Stmt
+	unlockStmt  *sql.Stmt
 }
 
 // NewCache creates a new cache instance
@@ -82,6 +90,12 @@ func NewCache(dbURL string, name ...string) (c *Cache, err error) {
 	}
 	c.subscribeDefault(chanName)
 
+	err = c.prepare()
+	if err != nil {
+		err = g.Error(err, "Could not initialize prepared statements")
+		return
+	}
+
 	return c, nil
 }
 
@@ -100,6 +114,75 @@ func (c *Cache) Close() {
 		}
 	}
 	c.db.Close()
+	c.closed = true
+}
+
+func (c *Cache) prepare() (err error) {
+
+	sql := g.R(
+		`insert into {table} ("key", "value", "expire_dt")
+		values ($1, $2, $3)
+		on conflict ("key") do update set "value" = $2, "expire_dt" = $3`,
+		"table", TableName,
+	)
+
+	c.setStmt, err = c.db.Prepare(sql)
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to set")
+		return
+	}
+
+	sql = g.R(
+		"SELECT value from {table} where key = $1",
+		"table", TableName,
+	)
+
+	c.getStmt, err = c.db.Prepare(sql)
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to get")
+		return
+	}
+
+	sql = g.R(
+		"delete from {table} where key = $1 returning value",
+		"table", TableName,
+	)
+	c.popStmt, err = c.db.Prepare(sql)
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to pop")
+		return
+	}
+
+	sql = g.R(
+		"SELECT '{}' from {table} where key = $1",
+		"table", TableName,
+	)
+	c.hasStmt, err = c.db.Prepare(sql)
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to has")
+		return
+	}
+
+	c.publishStmt, err = c.db.Prepare("SELECT pg_notify($1, $2)")
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to pg_notify")
+	}
+
+	c.lockStmt, err = c.db.Prepare("SELECT pg_advisory_lock($1)")
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to pg_notify")
+	}
+
+	c.lockTryStmt, err = c.db.Prepare("SELECT pg_try_advisory_lock($1)")
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to pg_notify")
+	}
+
+	c.unlockStmt, err = c.db.Prepare("SELECT pg_advisory_unlock($1)")
+	if err != nil {
+		err = g.Error(err, "could not prepare statement to pg_notify")
+	}
+	return
 }
 
 func (c *Cache) createTable() (err error) {
@@ -125,6 +208,10 @@ func (c *Cache) DeleteExpired() (err error) {
 		err = g.Error(err, "could not delete expired rows")
 	}
 	return
+}
+
+func noRows(err error) bool {
+	return strings.Contains(err.Error(), "no rows in result set")
 }
 
 // Set save a key/value pair into the designated cache table
@@ -155,21 +242,6 @@ func (c *Cache) SetContext(ctx context.Context, key string, value map[string]int
 		expireDt = &val
 	}
 
-	if c.setStmt == nil {
-		sql := g.R(
-			`insert into {table} ("key", "value", "expire_dt")
-			values ($1, $2, $3)
-			on conflict ("key") do update set "value" = $2, "expire_dt" = $3`,
-			"table", TableName,
-		)
-
-		c.setStmt, err = c.db.Prepare(sql)
-		if err != nil {
-			err = g.Error(err, "could not prepare statement to put value for %s", key)
-			return
-		}
-	}
-
 	valueStr := g.MarshalMap(value)
 	_, err = c.setStmt.ExecContext(ctx, key, valueStr, expireDt)
 	if err != nil {
@@ -184,6 +256,16 @@ func (c *Cache) SetContext(ctx context.Context, key string, value map[string]int
 		)
 	}
 
+	return
+}
+
+// Has checks if a key exists in the designated cache table
+func (c *Cache) Has(key string) (found bool, err error) {
+	found, err = c.HasContext(c.Context.Ctx, key)
+	if err != nil {
+		err = g.Error(err, "could not check value for %s", key)
+		return
+	}
 	return
 }
 
@@ -241,31 +323,14 @@ func (c *Cache) GetLikeValuesM(pattern string) (values []map[string]interface{},
 
 // Pop get a key/value pair from the designated cache table after deleting it
 func (c *Cache) Pop(key string) (value interface{}, err error) {
-	sql := g.R(
-		"delete from {table} where key = $1 returning value",
-		"table", TableName,
-	)
-
-	valM, err := c.GetContextSQL(c.Context.Ctx, sql, key)
+	row := c.popStmt.QueryRowContext(c.Context.Ctx, key)
+	valM, err := c.GetFromRow(row, key)
 	if err != nil {
 		err = g.Error(err, "could not get value for %s", key)
 		return
 	}
 	value = valM[valKey]
 
-	return
-}
-
-// PopM get a key/value pair from the designated cache table after deleting it
-func (c *Cache) PopM(key string) (value map[string]interface{}, err error) {
-	sql := g.R(
-		"delete from {table} where key = $1 returning value",
-		"table", TableName,
-	)
-	value, err = c.GetContextSQL(c.Context.Ctx, sql, key)
-	if err != nil {
-		err = g.Error(err, "could not get map value for %s", key)
-	}
 	return
 }
 
@@ -303,13 +368,22 @@ func (c *Cache) PopLikeM(pattern string) (values []map[string]interface{}, err e
 	return
 }
 
+// HasContext checks if a key exists in the designated cache table with context
+func (c *Cache) HasContext(ctx context.Context, key string) (found bool, err error) {
+	row := c.hasStmt.QueryRowContext(ctx, key)
+	val, err := c.GetFromRow(row, key)
+	if err != nil {
+		err = g.Error(err, "could not check value")
+	} else if val != nil {
+		found = true
+	}
+	return
+}
+
 // GetContext get a key/value pair from the designated cache table with context
 func (c *Cache) GetContext(ctx context.Context, key string) (value map[string]interface{}, err error) {
-	sql := g.R(
-		"SELECT value from {table} where key = $1",
-		"table", TableName,
-	)
-	return c.GetContextSQL(ctx, sql, key)
+	row := c.getStmt.QueryRowContext(ctx, key)
+	return c.GetFromRow(row, key)
 }
 
 // GetLikeKeysContext get keys from the designated cache table with a key LIKE filter with context
@@ -321,6 +395,9 @@ func (c *Cache) GetLikeKeysContext(ctx context.Context, pattern string) (values 
 
 	err = c.db.SelectContext(ctx, &values, sql, pattern)
 	if err != nil {
+		if noRows(err) {
+			return nil, nil
+		}
 		err = g.Error(err, "could not get key for %s", pattern)
 	}
 
@@ -336,11 +413,14 @@ func (c *Cache) GetLikeValuesContext(ctx context.Context, pattern string) (value
 	return c.SelectContextSQL(ctx, sql, pattern)
 }
 
-// GetContextSQL save a key/value pair from the designated cache table with context
-func (c *Cache) GetContextSQL(ctx context.Context, sql, key string) (value map[string]interface{}, err error) {
+// GetFromRow save a key/value pair from the designated cache table with context
+func (c *Cache) GetFromRow(row *sql.Row, key string) (value map[string]interface{}, err error) {
 	var valueStr string
-	err = c.db.GetContext(ctx, &valueStr, sql, key)
+	err = row.Scan(&valueStr)
 	if err != nil {
+		if noRows(err) {
+			return nil, nil
+		}
 		err = g.Error(err, "could not get value for %s", key)
 		return
 	}
@@ -358,6 +438,9 @@ func (c *Cache) SelectContextSQL(ctx context.Context, sql, pattern string) (valu
 	var valueArr []string
 	err = c.db.SelectContext(ctx, &valueArr, sql, pattern)
 	if err != nil {
+		if noRows(err) {
+			return nil, nil
+		}
 		err = g.Error(err, "could not get values for %s", pattern)
 		return
 	}

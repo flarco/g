@@ -1,7 +1,6 @@
 package gutil
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -28,7 +27,7 @@ func (e *ErrType) MsgStacked() (m string) {
 }
 
 // ErrorFull returns the full error stack
-func (e *ErrType) ErrorFull() string {
+func (e *ErrType) Full() string {
 	if len(e.MsgStack) == 0 {
 		return e.Err
 	}
@@ -48,9 +47,19 @@ func (e *ErrType) Error() string {
 	return F("~ %s\n%s", e.MsgStack[0], e.Err)
 }
 
+// FullError returns an error type with a detailed string
+func (e *ErrType) FullError() error {
+	return fmt.Errorf(e.Full())
+}
+
 // DebugError returns an error type with a detailed string
 func (e *ErrType) DebugError() error {
 	return fmt.Errorf(e.Debug())
+}
+
+// OriginalError returns an error type with the original err string
+func (e *ErrType) OriginalError() error {
+	return fmt.Errorf(e.Err)
 }
 
 // Debug returns a stacked error for debugging
@@ -79,11 +88,10 @@ func (e *ErrType) Debug() string {
 	return F("%s\n%s", strings.Join(stack, "\n"), e.Err)
 }
 
-func getCallerStack() []string {
+func getCallerStack(levelsUp int) []string {
 	callerArr := []string{}
-	i := 2
 	for {
-		pc, file, no, ok := runtime.Caller(i)
+		pc, file, no, ok := runtime.Caller(levelsUp)
 		if !ok {
 			break
 		}
@@ -93,20 +101,21 @@ func getCallerStack() []string {
 		fileArr := strings.Split(file, "/")
 		callStr := F("%s:%d %s", fileArr[len(fileArr)-1], no, funcName)
 		callerArr = append(callerArr, callStr)
-		i++
+		levelsUp++
 	}
 	return callerArr
 }
 
-// NewErrorType returns an Errtype error
-func NewErrorType(e interface{}, args ...interface{}) *ErrType {
+// NewError returns stacktrace error with message
+func NewError(levelsUp int, e interface{}, args ...interface{}) error {
+
 	if e == nil {
 		return nil
 	}
 
 	MsgStack := []string{ArgsErrMsg(args...)}
 	Err := cast.ToString(e)
-	CallerStack := getCallerStack()
+	CallerStack := getCallerStack(levelsUp)
 	Position := 0
 
 	switch e.(type) {
@@ -128,31 +137,7 @@ func NewErrorType(e interface{}, args ...interface{}) *ErrType {
 
 // Error returns stacktrace error with message
 func Error(e interface{}, args ...interface{}) error {
-
-	if e == nil {
-		return nil
-	}
-
-	MsgStack := []string{ArgsErrMsg(args...)}
-	Err := cast.ToString(e)
-	CallerStack := getCallerStack()
-	Position := 0
-
-	switch e.(type) {
-	case *ErrType:
-		errPrev := e.(*ErrType)
-		Err = errPrev.Err
-		MsgStack = append(errPrev.MsgStack, MsgStack...)
-		CallerStack = append([]string{errPrev.CallerStack[0]}, CallerStack...)
-		Position = errPrev.Position + 1
-	}
-
-	return &ErrType{
-		Err:         Err,
-		MsgStack:    MsgStack,
-		CallerStack: CallerStack,
-		Position:    Position,
-	}
+	return NewError(3, e, args...)
 }
 
 // ErrorIf allows use of `ErrorIf(err)` without the `if err != nil `
@@ -179,16 +164,19 @@ func isErrP(err error, msg string, callerSkip int) bool {
 func LogError(E error, args ...interface{}) {
 	if E != nil {
 		msg := ArgsErrMsg(args...)
-		doHooks(zerolog.DebugLevel, E.Error(), args)
-		if IsTask() {
-			simpleErr := errors.New(ErrMsgSimple(E))
-			LogOut.Err(simpleErr).Msg(msg) // simple message in STDOUT
-		}
 		err, ok := E.(*ErrType)
-		if ok {
-			E = err.DebugError()
+		if !ok {
+			err = NewError(3, E, args...).(*ErrType)
 		}
-		LogErr.Err(E).Msg(msg) // detailed error in STDERR
+		doHooks(zerolog.DebugLevel, err.Error(), args)
+		if IsTask() {
+			LogOut.Err(err.OriginalError()).Msg(msg) // simple message in STDOUT
+			LogErr.Err(err.DebugError()).Msg(msg)
+		} else if IsDebugLow() {
+			LogErr.Err(err.DebugError()).Msg(msg)
+		} else {
+			LogErr.Err(err.OriginalError()).Msg(msg) // detailed error in STDERR
+		}
 	}
 }
 

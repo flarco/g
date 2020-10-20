@@ -60,6 +60,11 @@ const (
 	WarnLevel
 )
 
+// func init() {
+// 	SetLogLevel(LowDebugLevel)
+// 	CallerLevel = 2
+// }
+
 // SetZeroLogLevel sets the zero log level
 func SetZeroLogLevel(level zerolog.Level) {
 	zerolog.SetGlobalLevel(level)
@@ -304,7 +309,7 @@ func LogFatal(E error, args ...interface{}) {
 		}
 
 		if !IsDebugLow() {
-			println(color.RedString(err.ErrorFull()))
+			println(color.RedString(err.Full()))
 			os.Exit(1)
 		}
 

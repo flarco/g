@@ -18,7 +18,7 @@ func (c *Cache) Lock(lockID LockType) (err error) {
 // LockContext waits obtain an advisory lock on PG (distributed locking) with context
 // https://www.postgresql.org/docs/12/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS
 func (c *Cache) LockContext(ctx context.Context, lockID LockType) (err error) {
-	_, err = c.db.ExecContext(ctx, "SELECT pg_advisory_lock($1)", lockID)
+	_, err = c.lockStmt.ExecContext(ctx, lockID)
 	if err != nil {
 		err = g.Error(err, "could not obtain advisory_lock")
 	}
@@ -28,15 +28,20 @@ func (c *Cache) LockContext(ctx context.Context, lockID LockType) (err error) {
 // LockTry do not wait to obtain an advisory lock on PG (distributed locking)
 // https://www.postgresql.org/docs/12/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS
 func (c *Cache) LockTry(lockID LockType) (success bool) {
-	err := c.db.Get(&success, "SELECT pg_try_advisory_lock($1)", lockID)
-	g.LogError(err)
+	row := c.lockTryStmt.QueryRow(lockID)
+	err := row.Scan(&success)
+	g.LogError(err, "could not lock")
 	return
 }
 
 // Unlock releases an advisory lock on PG (distributed locking)
 // https://www.postgresql.org/docs/12/functions-admin.html#FUNCTIONS-ADVISORY-LOCKS
 func (c *Cache) Unlock(lockID LockType) (success bool) {
-	err := c.db.Get(&success, "SELECT pg_advisory_unlock($1)", lockID)
-	g.LogError(err)
+	if c.closed {
+		return
+	}
+	row := c.unlockStmt.QueryRow(lockID)
+	err := row.Scan(&success)
+	g.LogError(err, "could not unlock")
 	return
 }

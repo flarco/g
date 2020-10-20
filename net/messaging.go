@@ -35,10 +35,10 @@ type Message struct {
 }
 
 // NoReplyMsg is for handlers who don't reply messages
-var NoReplyMsg = Message{Type: NoReplyMsgType}
+var NoReplyMsg = Message{Type: NoReplyMsgType, Data: gutil.M()}
 
-// AckMsg is for handlers were all went well
-var AckMsg = Message{Type: AckMsgType}
+// AckMsg is for handlers where all went well
+var AckMsg = Message{Type: AckMsgType, Data: gutil.M()}
 
 // JSON returns a JSON string
 func (msg *Message) JSON() []byte {
@@ -78,6 +78,10 @@ func NewMessage(msgType MessageType, data map[string]interface{}, orgReqID ...st
 	OrigReqID := ""
 	if len(orgReqID) > 0 {
 		OrigReqID = orgReqID[0]
+	}
+
+	if data == nil {
+		data = gutil.M()
 	}
 
 	return Message{
