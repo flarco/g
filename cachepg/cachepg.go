@@ -1,4 +1,4 @@
-package cache
+package cachepg
 
 import (
 	"context"
@@ -63,8 +63,8 @@ type Cache struct {
 	unlockStmt  *sql.Stmt
 }
 
-// NewCache creates a new cache instance
-func NewCache(dbURL string, name ...string) (c *Cache, err error) {
+// NewCachePG creates a new cache instance
+func NewCachePG(dbURL string, name ...string) (c *Cache, err error) {
 	db, err := sqlx.Open("postgres", dbURL)
 	if err != nil {
 		err = g.Error(err, "Could not initialize cache database connection")

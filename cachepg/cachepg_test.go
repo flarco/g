@@ -1,4 +1,4 @@
-package cache
+package cachepg
 
 import (
 	"os"
@@ -16,7 +16,7 @@ var (
 )
 
 func TestPubSub(t *testing.T) {
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	assert.NoError(t, err)
 	payload := "1234567"
 
@@ -65,7 +65,7 @@ func TestPubSub(t *testing.T) {
 
 func TestLock(t *testing.T) {
 	var lockCnt int
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	assert.NoError(t, err)
 
 	assert.NoError(t, c.Lock(LockType(1)))
@@ -82,7 +82,7 @@ func TestLock(t *testing.T) {
 }
 
 func TestSetGet(t *testing.T) {
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	assert.NoError(t, err)
 
 	err = c.createTable()
@@ -142,7 +142,7 @@ func TestSetGet(t *testing.T) {
 }
 
 func BenchmarkCachePGSet(b *testing.B) {
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	gutil.LogFatal(err)
 	for n := 0; n < b.N; n++ {
 		c.Set("key-1", "a stupid error")
@@ -150,7 +150,7 @@ func BenchmarkCachePGSet(b *testing.B) {
 }
 
 func BenchmarkCachePGGet(b *testing.B) {
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	gutil.LogFatal(err)
 	c.Set("key-1", "a stupid error")
 	for n := 0; n < b.N; n++ {
@@ -159,7 +159,7 @@ func BenchmarkCachePGGet(b *testing.B) {
 }
 
 func BenchmarkCachePGLock(b *testing.B) {
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	gutil.LogFatal(err)
 	for n := 0; n < b.N; n++ {
 		c.Lock(LockType(1))
@@ -168,7 +168,7 @@ func BenchmarkCachePGLock(b *testing.B) {
 }
 
 func BenchmarkCachePGPubSub(b *testing.B) {
-	c, err := NewCache(dbURL)
+	c, err := NewCachePG(dbURL)
 	gutil.LogFatal(err)
 
 	handlers := HandlerMap{
