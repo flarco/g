@@ -37,9 +37,10 @@ func (l *Listener) Close() {
 }
 
 // ProcessMsg processes a received message
-func (l *Listener) ProcessMsg(msg net.Message) {
+func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 	var err error
-	var rMsg net.Message
+
+	// g.Debug("Listener Channel: " + l.Channel)
 
 	l.mux.Lock()
 	handler, ok := l.replyHandlers[msg.OrigReqID]
@@ -57,7 +58,7 @@ func (l *Listener) ProcessMsg(msg net.Message) {
 		}
 	} else {
 		err = g.Error(g.F("no handler for %s - listener %s", msg.Type, l.Channel))
-		rMsg = net.NewMessageErr(err)
+		// rMsg = net.NewMessageErr(err)
 	}
 
 	toChannel := cast.ToString(rMsg.Data["to_channel"])
@@ -68,12 +69,15 @@ func (l *Listener) ProcessMsg(msg net.Message) {
 	}
 
 	rMsg.OrigReqID = msg.ReqID
+	// g.P(msg)
+	// g.P(rMsg)
 	if rMsg.Type != net.NoReplyMsgType && toChannel != l.Channel {
 		err = g.ErrorIf(l.c.Publish(toChannel, rMsg))
 	} else if rMsg.IsError() {
 		err = g.Error(rMsg.Error)
 	}
 	g.LogError(err, "error processing msg")
+	return
 }
 
 // ListenLoop is the loop process of a listener to receive a message
@@ -207,7 +211,8 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 // default timeout is 10 seconds.
 func (c *Cache) PublishWait(channel string, msg net.Message, timeOut ...int) (rMsg net.Message, err error) {
 	if channel == c.defChannel {
-		rMsg = msg
+		msg.Data["from_channel"] = c.defChannel
+		rMsg = c.DefListener().ProcessMsg(msg)
 		return
 	}
 

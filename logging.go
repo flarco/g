@@ -304,8 +304,7 @@ func LogFatal(E error, args ...interface{}) {
 	if E != nil {
 		err, ok := E.(*ErrType)
 		if !ok {
-			println(color.RedString(E.Error()))
-			os.Exit(1)
+			err = NewError(3, E, args...).(*ErrType)
 		}
 
 		if !IsDebugLow() {
