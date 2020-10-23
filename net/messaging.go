@@ -1,14 +1,15 @@
 package net
 
 import (
-	"encoding/json"
-
 	"github.com/flarco/gutil"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cast"
 )
 
 // MessageType is an enum type for messages
 type MessageType string
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 func (mt MessageType) String() string {
 	return string(mt)
@@ -107,10 +108,31 @@ func NewMessagePayload(msgType MessageType, payload string, orgReqID ...string) 
 	}
 }
 
+// NewMessageObj creates a new message with a obj
+func NewMessageObj(msgType MessageType, obj interface{}, orgReqID ...string) Message {
+	OrigReqID := ""
+	if len(orgReqID) > 0 {
+		OrigReqID = orgReqID[0]
+	}
+
+	return Message{
+		ReqID:     gutil.NewTsID("msg"),
+		Type:      msgType,
+		Data:      gutil.M("payload", gutil.Marshal(obj)),
+		OrigReqID: OrigReqID,
+	}
+}
+
 // NewMessageErr create a new message with ErrMsg type
 func NewMessageErr(err error, orgReqID ...string) Message {
 	msg := NewMessage(ErrMsgType, nil, orgReqID...)
-	msg.Error = err.Error()
+
+	E, ok := err.(*gutil.ErrType)
+	if !ok {
+		E = gutil.NewError(3, err).(*gutil.ErrType)
+	}
+	msg.Error = E.Full()
+	msg.Data["error_debug"] = E.Debug()
 	return msg
 }
 

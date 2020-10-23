@@ -200,6 +200,7 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 		return nil
 	}
 	msg.Data["from_channel"] = c.defChannel
+	g.Debug("msg #%s (%s) %s -> %s [%s]", msg.ReqID, msg.Type, c.defChannel, channel, msg.OrigReqID)
 	err = c.publish(channel, string(msg.JSON()))
 	if err != nil {
 		err = g.Error(err, "unable to publish msg to "+channel)
