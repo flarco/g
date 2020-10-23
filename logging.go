@@ -301,6 +301,7 @@ func LogCCyan(text string) { LogC(text, "cyan", os.Stderr) }
 
 // LogFatal handles logging of an error and exits, useful for reporting
 func LogFatal(E error, args ...interface{}) {
+	prefix := "fatal:\n"
 	if E != nil {
 		err, ok := E.(*ErrType)
 		if !ok {
@@ -308,14 +309,14 @@ func LogFatal(E error, args ...interface{}) {
 		}
 
 		if !IsDebugLow() {
-			println(color.RedString(err.Full()))
+			println(color.RedString(prefix + err.Full()))
 			os.Exit(1)
 		}
 
 		if IsTask() {
 			fmt.Fprintf(os.Stdout, err.Err) // stdout simple err
 		}
-		println(color.RedString(err.Debug())) // stderr for detailed
+		println(color.RedString(prefix + err.Debug())) // stderr for detailed
 		os.Exit(1)
 	}
 }
