@@ -154,6 +154,13 @@ func TestError2(t *testing.T) {
 	assert.Equal(t, et1.Err, et2.Err)
 	println(et2.Debug())
 }
+func TestError3(t *testing.T) {
+	e1 := Error("level 1")
+	e2 := Error("level %d (%s)", 2, e1.Error())
+	println(e1.Error())
+	println()
+	println(e2.Error())
+}
 
 func TestExists(t *testing.T) {
 	assert.True(t, PathExists("/root"))

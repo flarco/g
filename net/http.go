@@ -2,13 +2,13 @@ package net
 
 import (
 	"bufio"
-	"fmt"
-	"github.com/flarco/gutil"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/flarco/gutil"
 )
 
 // DownloadFile downloads a file
@@ -65,7 +65,7 @@ func ClientDoStream(method, URL string, body io.Reader, headers map[string]strin
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 		respBytes, _ := ioutil.ReadAll(resp.Body)
-		err = gutil.Error(fmt.Errorf("Unexpected Response %d: %s. %s", resp.StatusCode, resp.Status, string(respBytes)))
+		err = gutil.Error("Unexpected Response %d: %s. %s", resp.StatusCode, resp.Status, string(respBytes))
 		return
 	}
 
@@ -106,10 +106,9 @@ func ClientDo(method, URL string, body io.Reader, headers map[string]string, tim
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		err = gutil.Error(fmt.Errorf("Unexpected Response %d: %s. %s", resp.StatusCode, resp.Status, string(respBytes)))
+		err = gutil.Error("Unexpected Response %d: %s. %s", resp.StatusCode, resp.Status, string(respBytes))
 		return
 	}
 
 	return
 }
-

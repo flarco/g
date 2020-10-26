@@ -1,7 +1,6 @@
 package cachepg
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -67,7 +66,7 @@ func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 				rMsg = net.NoReplyMsg
 			}
 		} else {
-			err = g.Error(g.F("no handler for %s - listener %s", msg.Type, l.Channel))
+			err = g.Error("no handler for %s - listener %s", msg.Type, l.Channel)
 			// rMsg = net.NewMessageErr(err)
 		}
 	}
@@ -209,7 +208,12 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 		return g.Error("empty channel provided")
 	} else if msg.Type == net.MessageType("") {
 		return nil
+	} else if channel == c.defChannel {
+		msg.Data["from_channel"] = c.defChannel
+		c.DefListener().ProcessMsg(msg)
+		return
 	}
+
 	msg.Data["from_channel"] = c.defChannel
 	g.Debug("msg #%s (%s) %s -> %s [%s]", msg.ReqID, msg.Type, c.defChannel, channel, msg.OrigReqID)
 
@@ -261,7 +265,7 @@ func (c *Cache) PublishWait(channel string, msg net.Message, timeOut ...int) (rM
 	timer := time.NewTimer(to)
 	select {
 	case <-timer.C:
-		err = g.Error(fmt.Errorf("timeout. no response received for message %s", msg.Type))
+		err = g.Error("timeout. no response received for message %s", msg.Type)
 		return
 	case rMsg = <-replyChn:
 		return

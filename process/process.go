@@ -143,7 +143,7 @@ func NewProc(bin string, args ...string) (p *Proc, err error) {
 	}
 
 	if !p.ExecutableFound() {
-		err = g.Error(g.F("executable '%s' not found in path", p.Bin))
+		err = g.Error("executable '%s' not found in path", p.Bin)
 	}
 	return
 }
@@ -253,7 +253,7 @@ func (p *Proc) Run(args ...string) (err error) {
 	}
 
 	if code := p.Cmd.ProcessState.ExitCode(); code != 0 {
-		err = g.Error(g.F("exit code = %d", code), p.CmdErrorText())
+		err = g.Error("exit code = %d. %s", code, p.CmdErrorText())
 	}
 
 	return

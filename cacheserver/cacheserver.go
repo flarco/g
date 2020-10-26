@@ -57,6 +57,13 @@ func NewCacheServer(port int) *CacheServer {
 	return &cacheServer
 }
 
+// URL the cache server URL
+func (cs *CacheServer) URL() string {
+	hostname, _ := os.Hostname()
+	u := gutil.F("http://%s:%d/api/v1/cache/", hostname, cs.Port)
+	return u
+}
+
 // SetLogger sets the logger
 func (cs *CacheServer) SetLogger() {
 

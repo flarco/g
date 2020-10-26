@@ -125,6 +125,10 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		MsgStack = append(errPrev.MsgStack, MsgStack...)
 		CallerStack = append([]string{errPrev.CallerStack[0]}, CallerStack...)
 		Position = errPrev.Position + 1
+	case string:
+		MsgStack = []string{}
+		args = append([]interface{}{e}, args...)
+		Err = ArgsErrMsg(args...)
 	}
 
 	return &ErrType{

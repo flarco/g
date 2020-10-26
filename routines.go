@@ -2,13 +2,18 @@ package gutil
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"regexp"
+	"runtime"
+	"strings"
+	"time"
+
 	"github.com/jaypipes/ghw"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
-	"io/ioutil"
-	"net/http"
-	"time"
+	"github.com/spf13/cast"
 )
 
 var publicIPTimestamp time.Time
@@ -80,4 +85,51 @@ func GetMachineInfo() {
 	}
 
 	fmt.Printf("%v\n", product)
+}
+
+type (
+	caller struct {
+		Function string
+		Path     string
+	}
+
+	// Routine is a go routine
+	Routine struct {
+		Number  int
+		State   string
+		Callers []caller
+	}
+)
+
+// GetRunningGoRoutines returns the stack of all running goroutines
+func GetRunningGoRoutines() (routines []Routine) {
+
+	buf := make([]byte, 1<<16)
+	l := runtime.Stack(buf, true)
+	s := string(buf[0:l])
+	for _, stackStr := range strings.Split(s, "\n\n") {
+		r := Routine{}
+		regex := *regexp.MustCompile(`goroutine (\d+) \[(\S+)\]`)
+		res := regex.FindStringSubmatch(stackStr)
+		if len(res) == 2+1 {
+			r.Number = cast.ToInt(res[1])
+			r.State = cast.ToString(res[2])
+		}
+		stackStrArr := strings.Split(stackStr, "\n")
+		for i, line := range stackStrArr {
+			if i == 0 {
+				continue
+			}
+			if strings.HasPrefix(line, "\t") {
+				c := caller{
+					stackStrArr[i-1],
+					strings.Split(strings.TrimSpace(line), " ")[0],
+				}
+				r.Callers = append(r.Callers, c)
+			}
+		}
+		routines = append(routines, r)
+	}
+
+	return
 }
