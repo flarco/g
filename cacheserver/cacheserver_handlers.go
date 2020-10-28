@@ -33,7 +33,7 @@ func getCacheHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := (err).Error()
 		if strings.Contains(errMsg, "not found") {
-			log.Print(err)
+			// log.Print(err)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -75,7 +75,7 @@ func deleteCacheHandler(w http.ResponseWriter, r *http.Request) {
 	if err := cache.Delete(target); err != nil {
 		if strings.Contains((err).Error(), "not found") {
 			w.WriteHeader(http.StatusNotFound)
-			log.Printf("%s not found.", target)
+			// log.Printf("%s not found.", target)
 			return
 		}
 		w.WriteHeader(http.StatusInternalServerError)

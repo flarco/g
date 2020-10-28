@@ -97,6 +97,7 @@ func (cs *CacheServer) Serve() {
 	// let the middleware log.
 	mux := http.NewServeMux()
 
+	cs.SetLogger()
 	if cs.logger != nil {
 		mux.Handle(cachePath, serviceLoader(cacheIndexHandler(), requestMetrics(cs.logger)))
 		mux.Handle(statsPath, serviceLoader(statsIndexHandler(), requestMetrics(cs.logger)))
