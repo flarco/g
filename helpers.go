@@ -36,6 +36,11 @@ const (
 	TokenRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_."
 )
 
+type (
+	// Map is map[string]interface{}
+	Map map[string]interface{}
+)
+
 func init() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if os.Getenv("SLING_DEBUG_CALLER_LEVEL") != "" {

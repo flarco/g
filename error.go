@@ -100,6 +100,9 @@ func getCallerStack(levelsUp int) []string {
 		funcName := funcNameArr[len(funcNameArr)-1]
 		fileArr := strings.Split(file, "/")
 		callStr := F("%s:%d %s", fileArr[len(fileArr)-1], no, funcName)
+		if strings.Contains(callStr, "goexit") {
+			break
+		}
 		callerArr = append(callerArr, callStr)
 		levelsUp++
 	}

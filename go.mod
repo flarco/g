@@ -3,6 +3,9 @@ module github.com/flarco/gutil
 go 1.15
 
 require (
+	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
+	github.com/alecthomas/colour v0.1.0 // indirect
+	github.com/alecthomas/repr v0.0.0-20201006074542-804e374aceb1 // indirect
 	github.com/allegro/bigcache/v2 v2.2.4
 	github.com/fatih/color v1.9.0
 	github.com/gobuffalo/here v0.6.0
@@ -18,6 +21,7 @@ require (
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
 	github.com/palantir/stacktrace v0.0.0-20161112013806-78658fd2d177
 	github.com/rs/zerolog v1.20.0
+	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/shirou/gopsutil v2.20.8+incompatible
 	github.com/spf13/cast v1.3.1
 	github.com/stretchr/testify v1.6.1
