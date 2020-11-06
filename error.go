@@ -6,7 +6,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/flarco/g/stacktrace"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
@@ -150,22 +149,7 @@ func Error(e interface{}, args ...interface{}) error {
 // ErrorIf allows use of `ErrorIf(err)` without the `if err != nil `
 var ErrorIf = Error
 
-// IsErr : checks for error
-func IsErr(err error, msg string) bool {
-	if err != nil {
-		LogError(stacktrace.Propagate(err, msg, 3))
-		return true
-	}
-	return false
-}
 
-func isErrP(err error, msg string, callerSkip int) bool {
-	if err != nil {
-		LogError(stacktrace.Propagate(err, msg, callerSkip))
-		return true
-	}
-	return false
-}
 
 // LogError handles logging of an error, useful for reporting
 func LogError(E error, args ...interface{}) {

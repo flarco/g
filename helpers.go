@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flarco/g/stacktrace"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
@@ -208,8 +207,7 @@ func NowFileStr() string {
 }
 
 func uintStr(val string) uint {
-	val64, err := strconv.ParseUint(val, 10, 32)
-	isErrP(err, "Failed to ParseUint", 4)
+	val64, _ := strconv.ParseUint(val, 10, 32)
 	return uint(val64)
 }
 
@@ -277,7 +275,7 @@ func MapKeys(m map[string]interface{}) []string {
 // Must panics on error
 func Must(e error) {
 	if e != nil {
-		panic(stacktrace.Propagate(e, "", 3))
+		panic(NewError(3, e))
 	}
 }
 

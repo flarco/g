@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/flarco/g/sizedwaitgroup"
-	"github.com/flarco/g/stacktrace"
 	"github.com/spf13/cast"
 )
 
@@ -60,7 +59,7 @@ func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 	if E != nil {
 		if !strings.Contains(E.Error(), " --- at ") && IsDebugLow() {
 			msg := ArgsErrMsg(args...)
-			E = stacktrace.Propagate(E, msg, 3) // add stack
+			E = NewError(3, E, msg)
 		}
 		c.Cancel() // cancel context
 	}
