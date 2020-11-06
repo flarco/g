@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -93,6 +94,16 @@ func TestGenToken(t *testing.T) {
 	println(token)
 	println(hash)
 }
+
+func TestRand(t *testing.T) {
+	val := RandInt(30)
+	assert.Greater(t, val, 0)
+
+	d := time.Duration(val) * time.Minute
+	assert.EqualValues(t, val, d.Minutes())
+
+}
+
 func TestHash(t *testing.T) {
 	hash, err := Hash("hello")
 	assert.Nil(t, err)
