@@ -1,4 +1,4 @@
-package gutil
+package g
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/flarco/gutil/sizedwaitgroup"
-	"github.com/flarco/gutil/stacktrace"
+	"github.com/flarco/g/sizedwaitgroup"
+	"github.com/flarco/g/stacktrace"
 	"github.com/spf13/cast"
 )
 

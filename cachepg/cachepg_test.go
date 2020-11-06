@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flarco/gutil"
-	g "github.com/flarco/gutil"
-	"github.com/flarco/gutil/net"
+	"github.com/flarco/g"
+	g "github.com/flarco/g"
+	"github.com/flarco/g/net"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -42,14 +42,14 @@ func TestPubSub(t *testing.T) {
 
 	msg = net.NewMessage(
 		net.MessageType("ping"),
-		gutil.M("test", "ing"),
+		g.M("test", "ing"),
 	)
 
 	handlers = HandlerMap{
 		net.MessageType("ping"): func(msg net.Message) (rMsg net.Message) {
 			return net.NewMessage(
 				net.MessageType("pong"),
-				gutil.M("test", "received"),
+				g.M("test", "received"),
 			)
 		},
 	}
@@ -143,7 +143,7 @@ func TestSetGet(t *testing.T) {
 
 func BenchmarkCachePGSet(b *testing.B) {
 	c, err := NewCachePG(dbURL)
-	gutil.LogFatal(err)
+	g.LogFatal(err)
 	for n := 0; n < b.N; n++ {
 		c.Set("key-1", "a stupid error")
 	}
@@ -151,7 +151,7 @@ func BenchmarkCachePGSet(b *testing.B) {
 
 func BenchmarkCachePGGet(b *testing.B) {
 	c, err := NewCachePG(dbURL)
-	gutil.LogFatal(err)
+	g.LogFatal(err)
 	c.Set("key-1", "a stupid error")
 	for n := 0; n < b.N; n++ {
 		c.Get("key-1")
@@ -160,7 +160,7 @@ func BenchmarkCachePGGet(b *testing.B) {
 
 func BenchmarkCachePGLock(b *testing.B) {
 	c, err := NewCachePG(dbURL)
-	gutil.LogFatal(err)
+	g.LogFatal(err)
 	for n := 0; n < b.N; n++ {
 		c.Lock(LockType(1))
 		c.Unlock(LockType(1))
@@ -169,7 +169,7 @@ func BenchmarkCachePGLock(b *testing.B) {
 
 func BenchmarkCachePGPubSub(b *testing.B) {
 	c, err := NewCachePG(dbURL)
-	gutil.LogFatal(err)
+	g.LogFatal(err)
 
 	handlers := HandlerMap{
 		net.MessageType("test"): func(msg net.Message) (rMsg net.Message) {
@@ -185,6 +185,6 @@ func BenchmarkCachePGPubSub(b *testing.B) {
 	_, err = c.Subscribe("test_chan", handlers)
 	for n := 0; n < b.N; n++ {
 		err = c.Publish("test_chan", msg)
-		gutil.LogFatal(err)
+		g.LogFatal(err)
 	}
 }

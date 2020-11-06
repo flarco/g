@@ -3,7 +3,7 @@ package net
 import (
 	"strings"
 
-	"github.com/flarco/gutil"
+	"github.com/flarco/g"
 	"gopkg.in/gomail.v2"
 )
 
@@ -100,7 +100,7 @@ func (s *SMTP) SendQueue() (err error) {
 	d.SSL = s.SSL
 	err = d.DialAndSend(s.EmailQueue...)
 	if err != nil {
-		err = gutil.Error(err, "could not send email")
+		err = g.Error(err, "could not send email")
 		return
 	}
 	// clear the queue

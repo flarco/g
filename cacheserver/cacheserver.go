@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/allegro/bigcache/v2"
-	"github.com/flarco/gutil"
+	"github.com/flarco/g"
 )
 
 const (
@@ -43,7 +43,7 @@ var (
 
 // CacheServer is a bigcache server
 type CacheServer struct {
-	Context gutil.Context
+	Context g.Context
 	Port    int
 	logger  *log.Logger
 }
@@ -51,7 +51,7 @@ type CacheServer struct {
 // NewCacheServer creats a new instance of a cache server
 func NewCacheServer(port int) *CacheServer {
 	cacheServer := CacheServer{
-		Context: gutil.NewContext(context.Background()),
+		Context: g.NewContext(context.Background()),
 		Port:    port,
 	}
 	return &cacheServer
@@ -60,7 +60,7 @@ func NewCacheServer(port int) *CacheServer {
 // URL the cache server URL
 func (cs *CacheServer) URL() string {
 	hostname, _ := os.Hostname()
-	u := gutil.F("http://%s:%d/api/v1/cache/", hostname, cs.Port)
+	u := g.F("http://%s:%d/api/v1/cache/", hostname, cs.Port)
 	return u
 }
 

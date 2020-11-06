@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	g "github.com/flarco/gutil"
+	g "github.com/flarco/g"
 )
 
 // Session is a session to execute processes and keep output

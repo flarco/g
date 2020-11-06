@@ -1,7 +1,7 @@
 package net
 
 import (
-	"github.com/flarco/gutil"
+	"github.com/flarco/g"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cast"
 )
@@ -36,10 +36,10 @@ type Message struct {
 }
 
 // NoReplyMsg is for handlers who don't reply messages
-var NoReplyMsg = Message{Type: NoReplyMsgType, Data: gutil.M()}
+var NoReplyMsg = Message{Type: NoReplyMsgType, Data: g.M()}
 
 // AckMsg is for handlers where all went well
-var AckMsg = Message{Type: AckMsgType, Data: gutil.M()}
+var AckMsg = Message{Type: AckMsgType, Data: g.M()}
 
 // JSON returns a JSON string
 func (msg *Message) JSON() []byte {
@@ -59,7 +59,7 @@ func (msg *Message) Unmarshal(objPtr interface{}) error {
 	payload := cast.ToString(msg.Data["payload"])
 	err := json.Unmarshal([]byte(payload), objPtr)
 	if err != nil {
-		err = gutil.Error(err, "could not unmarshal")
+		err = g.Error(err, "could not unmarshal")
 	}
 	return err
 }
@@ -82,11 +82,11 @@ func NewMessage(msgType MessageType, data map[string]interface{}, orgReqID ...st
 	}
 
 	if data == nil {
-		data = gutil.M()
+		data = g.M()
 	}
 
 	return Message{
-		ReqID:     gutil.NewTsID("msg"),
+		ReqID:     g.NewTsID("msg"),
 		Type:      msgType,
 		Data:      data,
 		OrigReqID: OrigReqID,
@@ -101,9 +101,9 @@ func NewMessagePayload(msgType MessageType, payload string, orgReqID ...string) 
 	}
 
 	return Message{
-		ReqID:     gutil.NewTsID("msg"),
+		ReqID:     g.NewTsID("msg"),
 		Type:      msgType,
-		Data:      gutil.M("payload", payload),
+		Data:      g.M("payload", payload),
 		OrigReqID: OrigReqID,
 	}
 }
@@ -116,9 +116,9 @@ func NewMessageObj(msgType MessageType, obj interface{}, orgReqID ...string) Mes
 	}
 
 	return Message{
-		ReqID:     gutil.NewTsID("msg"),
+		ReqID:     g.NewTsID("msg"),
 		Type:      msgType,
-		Data:      gutil.M("payload", gutil.Marshal(obj)),
+		Data:      g.M("payload", g.Marshal(obj)),
 		OrigReqID: OrigReqID,
 	}
 }
@@ -127,9 +127,9 @@ func NewMessageObj(msgType MessageType, obj interface{}, orgReqID ...string) Mes
 func NewMessageErr(err error, orgReqID ...string) Message {
 	msg := NewMessage(ErrMsgType, nil, orgReqID...)
 
-	E, ok := err.(*gutil.ErrType)
+	E, ok := err.(*g.ErrType)
 	if !ok {
-		E = gutil.NewError(3, err).(*gutil.ErrType)
+		E = g.NewError(3, err).(*g.ErrType)
 	}
 	msg.Error = E.Full()
 	msg.Data["error_debug"] = E.Debug()
@@ -141,7 +141,7 @@ func NewMessageFromJSON(body []byte) (m Message, err error) {
 	m = Message{}
 	err = json.Unmarshal(body, &m)
 	if err != nil {
-		err = gutil.Error(err, "could not unmarshal message")
+		err = g.Error(err, "could not unmarshal message")
 	}
 	return
 }

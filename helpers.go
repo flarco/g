@@ -1,4 +1,4 @@
-package gutil
+package g
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/flarco/gutil/stacktrace"
+	"github.com/flarco/g/stacktrace"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"

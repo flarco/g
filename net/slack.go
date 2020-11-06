@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/flarco/gutil"
+	"github.com/flarco/g"
 )
 
 const defaultSlackTimeout = 5 * time.Second
@@ -61,7 +61,7 @@ func (sc *SlackClient) Send(slackRequest SlackMessage) error {
 	slackBody, _ := json.Marshal(slackRequest)
 	req, err := http.NewRequest(http.MethodPost, sc.WebHookURL, bytes.NewBuffer(slackBody))
 	if err != nil {
-		return gutil.Error(err, "could not build request")
+		return g.Error(err, "could not build request")
 	}
 	req.Header.Add("Content-Type", "application/json")
 	if sc.TimeOut == 0 {
@@ -70,16 +70,16 @@ func (sc *SlackClient) Send(slackRequest SlackMessage) error {
 	client := &http.Client{Timeout: sc.TimeOut}
 	resp, err := client.Do(req)
 	if err != nil {
-		return gutil.Error(err, "could not send request")
+		return g.Error(err, "could not send request")
 	}
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return gutil.Error(err, "could not read response body")
+		return g.Error(err, "could not read response body")
 	}
 	if buf.String() != "ok" {
-		return gutil.Error("Non-ok response returned from Slack")
+		return g.Error("Non-ok response returned from Slack")
 	}
 	return nil
 }

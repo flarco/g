@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/flarco/gutil"
+	"github.com/flarco/g"
 
 	"github.com/allegro/bigcache/v2"
 )
@@ -292,7 +292,7 @@ func BenchmarkCacheBCSet(b *testing.B) {
 	c := NewCacheClient("http://localhost:7707/api/v1/cache/")
 	for n := 0; n < b.N; n++ {
 		err = c.SetStr("key-1", "a stupid error")
-		gutil.LogFatal(err)
+		g.LogFatal(err)
 	}
 }
 
@@ -302,9 +302,9 @@ func BenchmarkCacheBCGet(b *testing.B) {
 	go cacheServer.Serve()
 	c := NewCacheClient("http://localhost:7707/api/v1/cache/")
 	err := c.SetStr("key1", "a stupid error")
-	gutil.LogFatal(err)
+	g.LogFatal(err)
 	for n := 0; n < b.N; n++ {
 		_, err = c.GetBytes("key1")
-		gutil.LogFatal(err)
+		g.LogFatal(err)
 	}
 }

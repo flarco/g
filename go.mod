@@ -1,4 +1,4 @@
-module github.com/flarco/gutil
+module github.com/flarco/g
 
 go 1.15
 

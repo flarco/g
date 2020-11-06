@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	g "github.com/flarco/gutil"
+	g "github.com/flarco/g"
 )
 
 // LockType is the type of Lock

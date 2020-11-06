@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	g "github.com/flarco/gutil"
+	g "github.com/flarco/g"
 )
 
 // CacheClient is our cache type

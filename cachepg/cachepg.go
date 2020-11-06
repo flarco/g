@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	g "github.com/flarco/gutil"
+	g "github.com/flarco/g"
 	"github.com/jmoiron/sqlx"
 	cmap "github.com/orcaman/concurrent-map"
 )

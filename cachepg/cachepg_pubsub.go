@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	g "github.com/flarco/gutil"
-	"github.com/flarco/gutil/net"
+	g "github.com/flarco/g"
+	"github.com/flarco/g/net"
 	"github.com/lib/pq"
 	"github.com/spf13/cast"
 )

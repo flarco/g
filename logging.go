@@ -1,4 +1,4 @@
-package gutil
+package g
 
 import (
 	"fmt"
@@ -70,7 +70,7 @@ func SetZeroLogLevel(level zerolog.Level) {
 	zerolog.SetGlobalLevel(level)
 }
 
-// SetLogLevel sets the gutil log level
+// SetLogLevel sets the g log level
 func SetLogLevel(level Level) {
 	LogLevel = &level
 }
@@ -98,9 +98,9 @@ func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
 	}
 }
 
-// GetLogLevel gets the gutil log level
+// GetLogLevel gets the g log level
 func GetLogLevel() Level {
-	// if val := os.Getenv("GUTIL_DEBUG"); val != "" {
+	// if val := os.Getenv("g_DEBUG"); val != "" {
 	// 	switch val {
 	// 	case "TRACE":
 	// 		SetZeroLogLevel(zerolog.TraceLevel)

@@ -1,4 +1,4 @@
-package gutil
+package g
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/flarco/gutil/stacktrace"
+	"github.com/flarco/g/stacktrace"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"

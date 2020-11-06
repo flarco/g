@@ -1,4 +1,4 @@
-package gutil
+package g
 
 import (
 	"bufio"

@@ -3,7 +3,7 @@ package net
 import (
 	"net/url"
 
-	"github.com/flarco/gutil"
+	"github.com/flarco/g"
 	"github.com/spf13/cast"
 )
 
@@ -17,7 +17,7 @@ type URL struct {
 func NewURL(urlStr string) (*URL, error) {
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		err = gutil.Error(err, "invalid URL")
+		err = g.Error(err, "invalid URL")
 		return &URL{OrigURL: urlStr}, err
 	}
 	return &URL{U: u, OrigURL: urlStr}, nil
