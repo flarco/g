@@ -3,19 +3,17 @@ package net
 import (
 	"bytes"
 	"net/http"
-	"time"
 
 	"github.com/flarco/g"
 )
 
-const defaultSlackTimeout = 5 * time.Second
+const defaultSlackTimeout = 5
 
 // SlackClient is the slack client
 type SlackClient struct {
 	WebHookURL string
 	UserName   string
 	Channel    string
-	TimeOut    time.Duration
 }
 
 // SlackMessage is a Slack message
@@ -57,28 +55,18 @@ func NewSlackClient(url string) *SlackClient {
 }
 
 // Send sends a slack message
-func (sc *SlackClient) Send(slackRequest SlackMessage) error {
-	slackBody, _ := json.Marshal(slackRequest)
-	req, err := http.NewRequest(http.MethodPost, sc.WebHookURL, bytes.NewBuffer(slackBody))
-	if err != nil {
-		return g.Error(err, "could not build request")
-	}
-	req.Header.Add("Content-Type", "application/json")
-	if sc.TimeOut == 0 {
-		sc.TimeOut = defaultSlackTimeout
-	}
-	client := &http.Client{Timeout: sc.TimeOut}
-	resp, err := client.Do(req)
-	if err != nil {
-		return g.Error(err, "could not send request")
-	}
+func (sc *SlackClient) Send(msg SlackMessage) (err error) {
 
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
-	if err != nil {
-		return g.Error(err, "could not read response body")
-	}
-	if buf.String() != "ok" {
+	msgBody, _ := json.Marshal(msg)
+	_, respBytes, err := ClientDo(
+		http.MethodPost,
+		sc.WebHookURL,
+		bytes.NewBuffer(msgBody),
+		map[string]string{"Content-Type": "application/json"},
+		5,
+	)
+
+	if string(respBytes) != "ok" {
 		return g.Error("Non-ok response returned from Slack")
 	}
 	return nil

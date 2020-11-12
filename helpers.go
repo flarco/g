@@ -12,7 +12,6 @@ import (
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
 )
 
@@ -40,52 +39,9 @@ type (
 	Map map[string]interface{}
 )
 
-func init() {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if os.Getenv("SLING_DEBUG_CALLER_LEVEL") != "" {
-		CallerLevel = cast.ToInt(os.Getenv("SLING_DEBUG_CALLER_LEVEL"))
-	}
-	if os.Getenv("SLING_DEBUG") == "TRACE" {
-		zerolog.SetGlobalLevel(zerolog.TraceLevel)
-	} else if os.Getenv("SLING_DEBUG") != "" {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
-
-	outputOut := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}
-	outputErr := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"}
-	outputOut.FormatErrFieldValue = func(i interface{}) string {
-		return fmt.Sprintf("%s", i)
-	}
-	outputErr.FormatErrFieldValue = func(i interface{}) string {
-		return fmt.Sprintf("%s", i)
-	}
-	// if os.Getenv("ZLOG") != "PROD" {
-	// 	zlog.Logger = zerolog.New(outputErr).With().Timestamp().Logger()
-	// }
-
-	if os.Getenv("SLING_LOGGING") == "TASK" {
-		outputOut.NoColor = true
-		outputErr.NoColor = true
-		LogOut = zerolog.New(outputOut).With().Timestamp().Logger()
-		LogErr = zerolog.New(outputErr).With().Timestamp().Logger()
-	} else if os.Getenv("SLING_LOGGING") == "MASTER" || os.Getenv("SLING_LOGGING") == "WORKER" {
-		zerolog.LevelFieldName = "lvl"
-		zerolog.MessageFieldName = "msg"
-		LogOut = zerolog.New(os.Stdout).With().Timestamp().Logger()
-		LogErr = zerolog.New(os.Stdout).With().Timestamp().Logger()
-	} else {
-		outputErr = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "3:04PM"}
-		if IsDebugLow() {
-			outputErr = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"}
-		}
-		LogOut = zerolog.New(outputErr).With().Timestamp().Logger()
-		LogErr = zerolog.New(outputErr).With().Timestamp().Logger()
-	}
-}
-
 // IsTask returns true is is TASK
 func IsTask() bool {
-	return os.Getenv("SLING_LOGGING") == "TASK"
+	return os.Getenv("G_LOGGING") == "TASK"
 }
 
 // GetType : return the type of an interface

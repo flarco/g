@@ -76,7 +76,7 @@ func ClientDoStream(method, URL string, body io.Reader, headers map[string]strin
 
 // ClientDo Http client method execution
 func ClientDo(method, URL string, body io.Reader, headers map[string]string, timeOut ...int) (resp *http.Response, respBytes []byte, err error) {
-	to := 3600 * time.Second
+	to := 30 * time.Second
 	if len(timeOut) > 0 {
 		to = time.Duration(timeOut[0]) * time.Second
 	}
