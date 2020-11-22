@@ -258,6 +258,14 @@ func MJ(args ...interface{}) string {
 	return string(MarshalMap(M(args...)))
 }
 
+// ToMap converst an interface to a map
+func ToMap(i interface{}) Map {
+	m := M()
+	jBytes, _ := json.Marshal(i)
+	json.Unmarshal(jBytes, &m)
+	return m
+}
+
 // Marshal marshals an interface into json
 func Marshal(i interface{}) string {
 	jBytes, _ := json.Marshal(i)

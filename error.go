@@ -149,8 +149,6 @@ func Error(e interface{}, args ...interface{}) error {
 // ErrorIf allows use of `ErrorIf(err)` without the `if err != nil `
 var ErrorIf = Error
 
-
-
 // LogError handles logging of an error, useful for reporting
 func LogError(E error, args ...interface{}) {
 	if E != nil {
@@ -245,9 +243,6 @@ func (e *ErrorGroup) Len() int {
 func (e *ErrorGroup) Capture(err error) bool {
 	if err != nil {
 		e.Errors = append(e.Errors, err)
-		if e.Logging || IsDebugLow() {
-			LogError(err)
-		}
 		return true
 	}
 	return false

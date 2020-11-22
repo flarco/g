@@ -50,25 +50,25 @@ func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 				err = g.Error(err, "unable to unmarshal __cache_key__ payload for %s - %s", msg.Type, msg.ReqID)
 			}
 		}
-	} else {
-		l.mux.Lock()
-		handler, ok := l.replyHandlers[msg.OrigReqID]
-		if ok {
-			delete(l.replyHandlers, msg.OrigReqID)
-		} else {
-			handler, ok = l.handlers[msg.Type]
-		}
-		l.mux.Unlock()
+	}
 
-		if ok {
-			rMsg = handler(msg)
-			if rMsg.Type == net.MessageType("") {
-				rMsg = net.NoReplyMsg
-			}
-		} else {
-			err = g.Error("no handler for %s - listener %s", msg.Type, l.Channel)
-			// rMsg = net.NewMessageErr(err)
+	l.mux.Lock()
+	handler, ok := l.replyHandlers[msg.OrigReqID]
+	if ok {
+		delete(l.replyHandlers, msg.OrigReqID)
+	} else {
+		handler, ok = l.handlers[msg.Type]
+	}
+	l.mux.Unlock()
+
+	if ok {
+		rMsg = handler(msg)
+		if rMsg.Type == net.MessageType("") {
+			rMsg = net.NoReplyMsg
 		}
+	} else {
+		err = g.Error("no handler for %s - listener %s", msg.Type, l.Channel)
+		// rMsg = net.NewMessageErr(err)
 	}
 
 	toChannel := cast.ToString(rMsg.Data["to_channel"])
@@ -104,6 +104,7 @@ func (l *Listener) ListenLoop() {
 			msg, err := net.NewMessageFromJSON([]byte(n.Extra))
 			g.LogError(err, "error parsing msg")
 			if err == nil {
+				g.Debug("msg #%s (%s) received via %s on %s", msg.ReqID, msg.Type, l.Channel, l.c.defChannel)
 				l.ProcessMsg(msg)
 			}
 		case <-time.After(90 * time.Second):
@@ -208,14 +209,15 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 		return g.Error("empty channel provided")
 	} else if msg.Type == net.MessageType("") {
 		return nil
-	} else if channel == c.defChannel {
-		msg.Data["from_channel"] = c.defChannel
-		c.DefListener().ProcessMsg(msg)
-		return
 	}
 
 	msg.Data["from_channel"] = c.defChannel
 	g.Debug("msg #%s (%s) %s -> %s [%s]", msg.ReqID, msg.Type, c.defChannel, channel, msg.OrigReqID)
+
+	if channel == c.defChannel {
+		c.DefListener().ProcessMsg(msg)
+		return
+	}
 
 	payload := string(msg.JSON())
 	if len(payload) >= 8000 {
