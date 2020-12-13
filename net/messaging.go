@@ -54,6 +54,14 @@ func (msg *Message) Text() string {
 	return text
 }
 
+// GetError returns an error type
+func (msg *Message) GetError() error {
+	if msg.Error != "" {
+		return g.NewError(3, msg.Error)
+	}
+	return nil
+}
+
 // Unmarshal parses a payload of JSON string into pointer
 func (msg *Message) Unmarshal(objPtr interface{}) error {
 	payload := cast.ToString(msg.Data["payload"])

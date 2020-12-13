@@ -416,6 +416,13 @@ func (c *Cache) GetLikeValuesContext(ctx context.Context, pattern string) (value
 // GetFromRow save a key/value pair from the designated cache table with context
 func (c *Cache) GetFromRow(row *sql.Row, key string) (value map[string]interface{}, err error) {
 	var valueStr string
+	value = map[string]interface{}{}
+	err = row.Err()
+	if err != nil {
+		err = g.Error(err, "could not get row for %s", key)
+		return
+	}
+
 	err = row.Scan(&valueStr)
 	if err != nil {
 		if noRows(err) {
@@ -425,10 +432,12 @@ func (c *Cache) GetFromRow(row *sql.Row, key string) (value map[string]interface
 		return
 	}
 
+	// g.Debug("GetFromRow | valueStr -> %s", valueStr)
 	err = g.Unmarshal(valueStr, &value)
 	if err != nil {
 		err = g.Error(err, "could not parse value for %s", key)
 	}
+	// g.Debug("GetFromRow | value -> %s", g.F("%#v", value))
 
 	return
 }

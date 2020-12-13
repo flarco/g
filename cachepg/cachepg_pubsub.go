@@ -39,15 +39,20 @@ func (l *Listener) Close() {
 func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 	var err error
 
-	// g.Debug("Listener Channel: " + l.Channel)
+	g.Debug("msg #%s (%s) -> %#v", msg.ReqID, msg.Type, msg)
 	if key, ok := msg.Data["__cache_key__"]; ok {
-		msgPayload, err := l.c.Pop(cast.ToString(key))
+		msgObj, err := l.c.Pop(cast.ToString(key))
 		if err != nil {
-			err = g.Error(err, "unable to read __cache_key__ payload for %s - %s", msg.Type, msg.ReqID)
+			err = g.Error(err, "unable to read __cache_key__ payload for msg #%s (%s)", msg.ReqID, msg.Type)
+			return net.NewMessageErr(err, msg.ReqID)
+		} else if msgObj == nil {
+			err = g.Error("blank value from __cache_key__ payload for msg #%s (%s)", msg.ReqID, msg.Type)
+			return net.NewMessageErr(err, msg.ReqID)
 		} else {
-			err = g.Unmarshal(cast.ToString(msgPayload), &msg)
+			err = g.Unmarshal(g.Marshal(msgObj), &msg)
 			if err != nil {
-				err = g.Error(err, "unable to unmarshal __cache_key__ payload for %s - %s", msg.Type, msg.ReqID)
+				err = g.Error(err, "unable to unmarshal __cache_key__ payload for msg #%s (%s)", msg.ReqID, msg.Type)
+				return net.NewMessageErr(err, msg.ReqID)
 			}
 		}
 	}
@@ -62,7 +67,9 @@ func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 	l.mux.Unlock()
 
 	if ok {
+		g.Debug("handling msg #%s (%s)", msg.ReqID, msg.Type)
 		rMsg = handler(msg)
+		// g.Debug("rMsg for msg #%s (%s) -> %#v", msg.ReqID, msg.Type, rMsg)
 		if rMsg.Type == net.MessageType("") {
 			rMsg = net.NoReplyMsg
 		}
@@ -79,14 +86,10 @@ func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 	}
 
 	rMsg.OrigReqID = msg.ReqID
-	// g.P(msg)
-	// g.P(rMsg)
-	if rMsg.Type != net.NoReplyMsgType && toChannel != l.Channel {
-		err = g.ErrorIf(l.c.Publish(toChannel, rMsg))
-	} else if rMsg.IsError() {
+	if rMsg.IsError() {
 		err = g.Error(rMsg.Error)
 	}
-	g.LogError(err, "error processing msg")
+	g.LogError(err, "error processing msg #%s (%s)", msg.ReqID, msg.Type)
 	return
 }
 
@@ -105,7 +108,16 @@ func (l *Listener) ListenLoop() {
 			g.LogError(err, "error parsing msg")
 			if err == nil {
 				g.Debug("msg #%s (%s) received via %s on %s", msg.ReqID, msg.Type, l.Channel, l.c.defChannel)
-				l.ProcessMsg(msg)
+				rMsg := l.ProcessMsg(msg)
+
+				toChannel := cast.ToString(rMsg.Data["to_channel"])
+				if toChannel != "" {
+					delete(rMsg.Data, "to_channel")
+				} else {
+					toChannel = cast.ToString(msg.Data["from_channel"])
+				}
+
+				l.c.Publish(toChannel, rMsg)
 			}
 		case <-time.After(90 * time.Second):
 			err := l.listener.Ping()
@@ -215,7 +227,7 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 	g.Debug("msg #%s (%s) %s -> %s [%s]", msg.ReqID, msg.Type, c.defChannel, channel, msg.OrigReqID)
 
 	if channel == c.defChannel {
-		c.DefListener().ProcessMsg(msg)
+		go c.DefListener().ProcessMsg(msg)
 		return
 	}
 
@@ -227,7 +239,7 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 			err = g.Error(err, "unable to set cache for msg %s", msg.ReqID)
 			return
 		}
-		msg.Data = g.M("__cache_key__", msg.ReqID)
+		msg.Data = g.M("__cache_key__", msg.ReqID, "from_channel", c.defChannel)
 	}
 	err = c.publish(channel, string(msg.JSON()))
 	if err != nil {

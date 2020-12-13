@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/flarco/g"
-	g "github.com/flarco/g"
 	"github.com/flarco/g/net"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,13 +67,16 @@ func TestLock(t *testing.T) {
 	c, err := NewCachePG(dbURL)
 	assert.NoError(t, err)
 
-	assert.NoError(t, c.Lock(LockType(1)))
-	assert.True(t, c.LockTry(LockType(2)))
+	tx1, err := c.Lock(LockType(1))
+	assert.NoError(t, err)
+
+	tx2, ok := c.LockTry(LockType(2))
+	assert.True(t, ok)
 	c.db.Get(&lockCnt, "SELECT count(1) from pg_locks where locktype = 'advisory'")
 	assert.Equal(t, 2, lockCnt)
 
-	assert.True(t, c.Unlock(LockType(1)))
-	assert.True(t, c.Unlock(LockType(2)))
+	assert.True(t, c.Unlock(tx1, LockType(1)))
+	assert.True(t, c.Unlock(tx2, LockType(2)))
 
 	c.db.Get(&lockCnt, "SELECT count(1) from pg_locks where locktype = 'advisory'")
 	assert.Equal(t, 0, lockCnt)
@@ -162,8 +164,8 @@ func BenchmarkCachePGLock(b *testing.B) {
 	c, err := NewCachePG(dbURL)
 	g.LogFatal(err)
 	for n := 0; n < b.N; n++ {
-		c.Lock(LockType(1))
-		c.Unlock(LockType(1))
+		tx, _ := c.Lock(LockType(1))
+		c.Unlock(tx, LockType(1))
 	}
 }
 
