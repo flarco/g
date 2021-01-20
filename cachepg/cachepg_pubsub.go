@@ -73,7 +73,7 @@ func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 		if rMsg.Type == net.MessageType("") {
 			rMsg = net.NoReplyMsg
 		}
-	} else {
+	} else if msg.Type != net.NoReplyMsgType {
 		err = g.Error("no handler for %s - listener %s", msg.Type, l.Channel)
 		// rMsg = net.NewMessageErr(err)
 	}
