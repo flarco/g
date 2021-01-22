@@ -2,6 +2,7 @@ package g
 
 import (
 	"bufio"
+	"database/sql/driver"
 	"fmt"
 	"io"
 	"net"
@@ -38,6 +39,44 @@ type (
 	// Map is map[string]interface{}
 	Map map[string]interface{}
 )
+
+// Scan scan value into Jsonb, implements sql.Scanner interface
+func (j *Map) Scan(value interface{}) error {
+	var bytes []byte
+
+	switch v := value.(type) {
+	case []byte:
+		bytes = value.([]byte)
+	case string:
+		bytes = []byte(value.(string))
+	default:
+		_ = v
+		return Error("Failed to unmarshal JSONB value")
+	}
+
+	err := json.Unmarshal(bytes, j)
+	if err != nil {
+		return Error(err, "Could not unmarshal bytes")
+	}
+	return nil
+}
+
+// Value return json value, implement driver.Valuer interface
+func (j Map) Value() (driver.Value, error) {
+	if len(j) == 0 {
+		return nil, nil
+	}
+	return MarshalMap(j), nil
+}
+
+// AsMapString returns the value as a Map of strings
+func (j Map) AsMapString() map[string]string {
+	m := map[string]string{}
+	for k, v := range j {
+		m[k] = cast.ToString(v)
+	}
+	return m
+}
 
 // IsTask returns true is is TASK
 func IsTask() bool {
