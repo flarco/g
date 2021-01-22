@@ -64,7 +64,7 @@ func (j *Map) Scan(value interface{}) error {
 // Value return json value, implement driver.Valuer interface
 func (j Map) Value() (driver.Value, error) {
 	if len(j) == 0 {
-		return nil, nil
+		return []byte("{}"), nil
 	}
 	return MarshalMap(j), nil
 }
