@@ -17,7 +17,7 @@ type SizedWaitGroup struct {
 
 	queueSize int32
 	current   chan struct{}
-	wg        sync.WaitGroup
+	wg        *sync.WaitGroup
 }
 
 // New creates a SizedWaitGroup.
@@ -32,7 +32,7 @@ func New(limit int) SizedWaitGroup {
 		Size: size,
 
 		current: make(chan struct{}, size),
-		wg:      sync.WaitGroup{},
+		wg:      &sync.WaitGroup{},
 	}
 }
 
