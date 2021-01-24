@@ -150,7 +150,7 @@ func Error(e interface{}, args ...interface{}) error {
 var ErrorIf = Error
 
 // LogError handles logging of an error, useful for reporting
-func LogError(E error, args ...interface{}) {
+func LogError(E error, args ...interface{}) bool {
 	if E != nil {
 		msg := ArgsErrMsg(args...)
 		err, ok := E.(*ErrType)
@@ -166,7 +166,9 @@ func LogError(E error, args ...interface{}) {
 		} else {
 			LogErr.Err(err.OriginalError()).Msg(msg) // detailed error in STDERR
 		}
+		return true
 	}
+	return false
 }
 
 // ArgsErrMsg takes args and makes an error message

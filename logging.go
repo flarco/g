@@ -29,14 +29,14 @@ type LogHook struct {
 // LogHooks are log hooks
 var LogHooks = []*LogHook{}
 
-// LogOut is the non-error/normal logger
-var LogOut zerolog.Logger
-
 // LogLevel is the log level
 var LogLevel = new(Level)
 
+// LogOut is the non-error/normal logger
+var LogOut = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
+
 // LogErr is the error/debug logger
-var LogErr zerolog.Logger
+var LogErr = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
 
 // CallerLevel is the stack caller information level
 var CallerLevel = 0
@@ -100,7 +100,7 @@ func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
 
 // GetLogLevel gets the g log level
 func GetLogLevel() Level {
-	if val := os.Getenv("g_DEBUG"); val != "" {
+	if val := os.Getenv("_DEBUG"); val != "" {
 		switch val {
 		case "TRACE":
 			SetZeroLogLevel(zerolog.TraceLevel)

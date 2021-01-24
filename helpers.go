@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -163,7 +164,7 @@ func R(format string, args ...string) string {
 
 // Rm is like R, for replacing with a map
 func Rm(format string, m map[string]interface{}) string {
-	if m == nil {
+	if m == nil || len(m) == 0 {
 		return format
 	}
 
@@ -174,6 +175,38 @@ func Rm(format string, m map[string]interface{}) string {
 		i += 2
 	}
 	return strings.NewReplacer(args...).Replace(format)
+}
+
+// Match is a regex match
+type Match struct {
+	Full  string
+	Group []string
+}
+
+// MatchesGroup returns an array of a group value index
+func MatchesGroup(whole, pattern string, i int) (a []string) {
+	matches := Matches(whole, pattern)
+	a = make([]string, len(matches))
+	for j, m := range matches {
+		if i < len(m.Group) {
+			a[j] = m.Group[i]
+		}
+	}
+	return
+}
+
+// Matches returns potential regex matches
+func Matches(whole, pattern string) (matches []Match) {
+	regex := *regexp.MustCompile(pattern)
+	result := regex.FindAllStringSubmatch(whole, -1)
+	matches = make([]Match, len(result))
+	for i, arr := range result {
+		matches[i] = Match{Full: arr[0], Group: arr}
+		if len(arr) > 1 {
+			matches[i].Group = arr[1:]
+		}
+	}
+	return
 }
 
 // PrintT prints the type of object

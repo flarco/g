@@ -177,3 +177,11 @@ func TestExists(t *testing.T) {
 	assert.True(t, PathExists("/root"))
 	assert.False(t, PathExists("/roodadat"))
 }
+
+func TestMatches(t *testing.T) {
+	m := Matches("oracle://{username}:{password}@{tns}", "{([a-zA-Z]+)}")
+	assert.Len(t, m, 3)
+
+	g := MatchesGroup("oracle://{username}:{password}@{tns}", "{([a-zA-Z]+)}", 0)
+	assert.Equal(t, g[2], "tns")
+}
