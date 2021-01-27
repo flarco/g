@@ -69,6 +69,15 @@ func (u *URL) AddParam(key, value string) *URL {
 	return u
 }
 
+// GetParam extracts/removes a query parameter
+func (u *URL) GetParam(key string) string {
+	if u.U == nil {
+		return ""
+	}
+	q := u.U.Query()
+	return q.Get(key)
+}
+
 // PopParam extracts/removes a query parameter
 func (u *URL) PopParam(key string) string {
 	if u.U == nil {
