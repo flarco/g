@@ -41,8 +41,8 @@ type (
 	Map map[string]interface{}
 )
 
-// Scan scan value into Jsonb, implements sql.Scanner interface
-func (j *Map) Scan(value interface{}) error {
+// JSONScanner scans value into Jsonb, implements sql.Scanner interface
+func JSONScanner(destPtr, value interface{}) error {
 	var bytes []byte
 
 	switch v := value.(type) {
@@ -55,19 +55,33 @@ func (j *Map) Scan(value interface{}) error {
 		return Error("Failed to unmarshal JSONB value")
 	}
 
-	err := json.Unmarshal(bytes, j)
+	err := json.Unmarshal(bytes, destPtr)
 	if err != nil {
 		return Error(err, "Could not unmarshal bytes")
 	}
 	return nil
 }
 
+// JSONValuer return json value, implement driver.Valuer interface
+func JSONValuer(val interface{}, defVal string) (driver.Value, error) {
+	if val == nil {
+		return []byte(defVal), nil
+	}
+	jBytes, err := json.Marshal(val)
+	if err != nil {
+		return nil, Error(err, "could not marshal")
+	}
+	return jBytes, nil
+}
+
+// Scan scan value into Jsonb, implements sql.Scanner interface
+func (j *Map) Scan(value interface{}) error {
+	return JSONScanner(j, value)
+}
+
 // Value return json value, implement driver.Valuer interface
 func (j Map) Value() (driver.Value, error) {
-	if len(j) == 0 {
-		return []byte("{}"), nil
-	}
-	return MarshalMap(j), nil
+	return JSONValuer(j, "{}")
 }
 
 // AsMapString returns the value as a Map of strings
