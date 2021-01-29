@@ -344,12 +344,58 @@ func MJ(args ...interface{}) string {
 	return string(MarshalMap(M(args...)))
 }
 
-// ToMap converst an interface to a map
+// ToMap convert an interface to a map via JSON
 func ToMap(i interface{}) Map {
 	m := M()
 	jBytes, _ := json.Marshal(i)
 	json.Unmarshal(jBytes, &m)
 	return m
+}
+
+// AsMap converts a map to a map via cast
+func AsMap(value interface{}, toLowerKey ...bool) Map {
+	m0 := M()
+
+	lowerKey := false
+	if len(toLowerKey) > 0 && toLowerKey[0] {
+		lowerKey = true
+	}
+
+	switch value.(type) {
+	case map[string]interface{}:
+		m1 := value.(map[string]interface{})
+		for k, v := range m1 {
+			m0[k] = v
+		}
+	case map[string]string:
+		m1 := value.(map[string]string)
+		for k, v := range m1 {
+			m0[k] = v
+		}
+	case Map:
+		m0 = value.(Map)
+	default:
+		v := reflect.ValueOf(value)
+		if v.Kind() == reflect.Map {
+			iter := v.MapRange()
+			for iter.Next() {
+				key := iter.Key()
+				val := iter.Value()
+				m0[cast.ToString(key.Interface())] = val.Interface()
+			}
+		}
+	}
+
+	m2 := M()
+	if lowerKey {
+		for k, v := range m0 {
+			m2[strings.ToLower(k)] = v
+		}
+	} else {
+		m2 = m0
+	}
+
+	return m2
 }
 
 // Marshal marshals an interface into json

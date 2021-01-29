@@ -84,8 +84,12 @@ func TestLogging(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
-	m := map[string]int64{}
+	m := map[string]int64{"one": 2, "two": 121}
 	println(m["hello"]) // should be 0
+	assert.EqualValues(t, 121, AsMap(m)["two"])
+
+	m1 := map[int]float32{1: 1, 2: 2.2}
+	assert.EqualValues(t, m1[2], AsMap(m1)["2"])
 }
 
 func TestGenToken(t *testing.T) {
