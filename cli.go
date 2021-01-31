@@ -69,7 +69,6 @@ func (c *CliSC) Make() *CliSC {
 	listFlagsAllowed := map[string]string{
 		"hostname":   "",
 		"name":       "",
-		"region":     "",
 		"type":       "",
 		"account_id": "",
 		"email":      "",

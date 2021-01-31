@@ -272,5 +272,10 @@ func (e *ErrorGroup) Err() error {
 func ErrJSON(HTTPStatus int, err error, args ...interface{}) error {
 	msg := ArgsErrMsg(args...)
 	LogError(err)
-	return echo.NewHTTPError(HTTPStatus, M("message", msg, "error", ErrMsg(err)))
+	if msg == "" {
+		msg = ErrMsg(err)
+	} else {
+		msg = F("%s [%s]", msg, ErrMsg(err))
+	}
+	return echo.NewHTTPError(HTTPStatus, M("error", msg))
 }
