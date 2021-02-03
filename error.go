@@ -274,7 +274,7 @@ func ErrJSON(HTTPStatus int, err error, args ...interface{}) error {
 	LogError(err)
 	if msg == "" {
 		msg = ErrMsg(err)
-	} else {
+	} else if ErrMsg(err) != "" {
 		msg = F("%s [%s]", msg, ErrMsg(err))
 	}
 	return echo.NewHTTPError(HTTPStatus, M("error", msg))
