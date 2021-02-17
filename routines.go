@@ -22,24 +22,24 @@ var publicIPTimestamp time.Time
 var PublicIP string
 
 // UpdatePublicIP updates the public IP value
-func UpdatePublicIP() {
+func UpdatePublicIP() error {
 	if !publicIPTimestamp.IsZero() && time.Since(publicIPTimestamp).Seconds() < 60*60 {
-		return
+		return nil
 	}
+
+	defer func() { publicIPTimestamp = time.Now() }()
 
 	client := http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get("http://ifconfig.me")
 	if err != nil {
-		LogError(err, "Could not Get IP from http://ifconfig.me")
-		return
+		return Error(err, "Could not Get IP from http://ifconfig.me")
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		LogError(err, "Could not read IP response from http://ifconfig.me")
-		return
+		return Error(err, "Could not read IP response from http://ifconfig.me")
 	}
 	PublicIP = string(respBytes)
-	publicIPTimestamp = time.Now()
+	return nil
 }
 
 // GetMachineProcStats returns the machine performance metrics

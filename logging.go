@@ -12,6 +12,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/rs/zerolog"
+	"github.com/spf13/cast"
 )
 
 // LogHook is a hook to be perform at the specified level
@@ -60,10 +61,13 @@ const (
 	WarnLevel
 )
 
-// func init() {
-// 	SetLogLevel(LowDebugLevel)
-// 	CallerLevel = 2
-// }
+func init() {
+	// SetLogLevel(LowDebugLevel)
+	// CallerLevel = 2
+	if os.Getenv("_DEBUG_CALLER_LEVEL") != "" {
+		CallerLevel = cast.ToInt(os.Getenv("_DEBUG_CALLER_LEVEL"))
+	}
+}
 
 // SetZeroLogLevel sets the zero log level
 func SetZeroLogLevel(level zerolog.Level) {
