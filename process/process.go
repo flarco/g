@@ -33,6 +33,7 @@ type Proc struct {
 	Print                      bool
 	HideCmdInErr               bool
 	Stderr, Stdout             bytes.Buffer
+	StdinWriter                io.Writer
 	StderrReader, StdoutReader io.Reader
 	printMux                   sync.Mutex
 	scanner                    *scanConfig
@@ -177,6 +178,10 @@ func (p *Proc) Start(args ...string) (err error) {
 		return g.Error(err)
 	}
 	p.StderrReader, err = p.Cmd.StderrPipe()
+	if err != nil {
+		return g.Error(err)
+	}
+	p.StdinWriter, err = p.Cmd.StdinPipe()
 	if err != nil {
 		return g.Error(err)
 	}

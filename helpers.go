@@ -516,3 +516,13 @@ func PathExists(path string) bool {
 	_, err := os.Stat(path)
 	return !os.IsNotExist(err)
 }
+
+// In returns true if `item` matches a value in `potMatches`
+func In(item interface{}, potMatches ...interface{}) bool {
+	for _, m := range potMatches {
+		if item == m {
+			return true
+		}
+	}
+	return false
+}
