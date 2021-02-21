@@ -1,6 +1,7 @@
 package net
 
 import (
+	"os"
 	"strings"
 
 	"github.com/flarco/g"
@@ -95,6 +96,9 @@ func (s *SMTP) Send(emails ...Email) (err error) {
 
 // SendQueue sends all email messages in queue
 func (s *SMTP) SendQueue() (err error) {
+	if os.Getenv("TESTING") == "TRUE" {
+		return nil
+	}
 	d := gomail.NewDialer(s.Host, s.Port, s.User, s.Password)
 	// d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	d.SSL = s.SSL
