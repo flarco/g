@@ -94,10 +94,11 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 		if ok {
 			// replace alias value with alias key in messages
 			// this is to hide unneeded/unwanted details
-			for k, v := range s.Alias {
-				for i, msg := range e.MsgStack {
-					e.MsgStack[i] = strings.ReplaceAll(msg, v, k)
+			for i, msg := range e.MsgStack {
+				for k, v := range s.Alias {
+					msg = strings.ReplaceAll(msg, v, k)
 				}
+				e.MsgStack[i] = msg
 			}
 			err = g.Error(e, "error running process")
 		} else {
