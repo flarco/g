@@ -78,8 +78,11 @@ func (s *SMTP) QueueEmail(emails ...Email) (err error) {
 		s.setRecipient(m, "To", e.To)
 		s.setRecipient(m, "Cc", e.Cc)
 		s.setRecipient(m, "Bcc", e.Bcc)
-		m.SetBody("text/html", e.HTMLBody)
-		m.SetBody("text/plain", e.TextBody)
+		if e.HTMLBody != "" {
+			m.SetBody("text/html", e.HTMLBody)
+		} else {
+			m.SetBody("text/plain", e.TextBody)
+		}
 		for _, f := range e.Files {
 			m.Attach(f)
 		}

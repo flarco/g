@@ -84,8 +84,8 @@ func (j Map) Value() (driver.Value, error) {
 	return JSONValuer(j, "{}")
 }
 
-// AsMapString returns the value as a Map of strings
-func (j Map) AsMapString() map[string]string {
+// ToMapString returns the value as a Map of strings
+func ToMapString(j map[string]interface{}) map[string]string {
 	m := map[string]string{}
 	for k, v := range j {
 		m[k] = cast.ToString(v)
@@ -353,7 +353,7 @@ func ToMap(i interface{}) Map {
 }
 
 // AsMap converts a map to a map via cast
-func AsMap(value interface{}, toLowerKey ...bool) Map {
+func AsMap(value interface{}, toLowerKey ...bool) map[string]interface{} {
 	m0 := M()
 
 	lowerKey := false
