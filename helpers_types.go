@@ -55,11 +55,11 @@ func (c *Context) SetConcurencyLimit(concurencyLimit int) {
 }
 
 // CaptureErr if err != nil, captures the error from concurent function
+// and cancels the context
 func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 	if E != nil {
 		if !strings.Contains(E.Error(), " --- at ") && IsDebugLow() {
-			msg := ArgsErrMsg(args...)
-			E = NewError(3, E, msg)
+			E = NewError(3, E, args...)
 		}
 		c.Cancel() // cancel context
 	}
