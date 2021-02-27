@@ -67,7 +67,7 @@ func (l *Listener) ProcessMsg(msg net.Message) (rMsg net.Message) {
 	l.mux.Unlock()
 
 	if ok {
-		g.Trace("handling msg #%s (%s)", msg.ReqID, msg.Type)
+		// g.Trace("handling msg #%s (%s)", msg.ReqID, msg.Type)
 		rMsg = handler(msg)
 		// g.Trace("rMsg for msg #%s (%s) -> %#v", msg.ReqID, msg.Type, rMsg)
 		if rMsg.Type == net.MessageType("") {
@@ -107,7 +107,7 @@ func (l *Listener) ListenLoop() {
 			msg, err := net.NewMessageFromJSON([]byte(n.Extra))
 			g.LogError(err, "error parsing msg")
 			if err == nil {
-				g.Trace("msg #%s (%s) received via %s on %s", msg.ReqID, msg.Type, l.Channel, l.c.defChannel)
+				// g.Trace("msg #%s (%s) received via %s on %s", msg.ReqID, msg.Type, l.Channel, l.c.defChannel)
 				rMsg := l.ProcessMsg(msg)
 
 				toChannel := cast.ToString(rMsg.Data["to_channel"])
@@ -224,7 +224,7 @@ func (c *Cache) Publish(channel string, msg net.Message) (err error) {
 	}
 
 	msg.Data["from_channel"] = c.defChannel
-	g.Trace("msg #%s (%s) %s -> %s [%s]", msg.ReqID, msg.Type, c.defChannel, channel, msg.OrigReqID)
+	// g.Trace("msg #%s (%s) %s -> %s [%s]", msg.ReqID, msg.Type, c.defChannel, channel, msg.OrigReqID)
 
 	if channel == c.defChannel {
 		go c.DefListener().ProcessMsg(msg)
