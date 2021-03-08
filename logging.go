@@ -62,7 +62,9 @@ const (
 )
 
 func init() {
-	// SetLogLevel(LowDebugLevel)
+	SetZeroLogLevel(zerolog.InfoLevel)
+	SetLogLevel(NormalLevel)
+	GetLogLevel()
 	// CallerLevel = 2
 	if os.Getenv("_DEBUG_CALLER_LEVEL") != "" {
 		CallerLevel = cast.ToInt(os.Getenv("_DEBUG_CALLER_LEVEL"))
