@@ -33,6 +33,7 @@ type Message struct {
 	Data      map[string]interface{} `json:"data"`
 	Error     string                 `json:"error"`
 	OrigReqID string                 `json:"orig_req_id,omitempty"`
+	From      string                 `json:"from,omitempty"`
 }
 
 // NoReplyMsg is for handlers who don't reply messages
