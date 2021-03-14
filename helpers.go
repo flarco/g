@@ -485,6 +485,7 @@ func StructFieldsMapToKey(obj interface{}) (m map[string]string) {
 	m = map[string]string{}
 	for _, f := range StructFields(obj) {
 		m[f.Field.Name] = f.JKey
+		m[f.JKey] = f.JKey
 	}
 	return
 }
