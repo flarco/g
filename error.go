@@ -183,6 +183,14 @@ func ArgsErrMsg(args ...interface{}) (msg string) {
 	return
 }
 
+// ErrContains returns true if the sub-tring is found in error string
+func ErrContains(e error, subStr string) bool {
+	if e == nil {
+		return false
+	}
+	return strings.Contains(e.Error(), subStr)
+}
+
 //ErrMsg returns a simple error message
 func ErrMsg(e error) string {
 	if e == nil {

@@ -6,6 +6,12 @@ import (
 	"github.com/spf13/cast"
 )
 
+// Handler is a handler function
+type Handler func(Message) Message
+
+// Handlers is a map of handler functions
+type Handlers map[MessageType]Handler
+
 // MessageType is an enum type for messages
 type MessageType string
 

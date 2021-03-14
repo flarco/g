@@ -474,6 +474,21 @@ type StructField struct {
 	JKey  string
 }
 
+// IsPointer returns `true` is obj is a pointer
+func IsPointer(obj interface{}) bool {
+	value := reflect.ValueOf(obj)
+	return value.Kind() == reflect.Ptr
+}
+
+// StructFieldsMapToKey returns a map of fields name to key
+func StructFieldsMapToKey(obj interface{}) (m map[string]string) {
+	m = map[string]string{}
+	for _, f := range StructFields(obj) {
+		m[f.Field.Name] = f.JKey
+	}
+	return
+}
+
 // StructFields returns the fields of a struct
 func StructFields(obj interface{}) (fields []StructField) {
 	var t reflect.Type
