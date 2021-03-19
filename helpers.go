@@ -498,3 +498,8 @@ func ChunkBy(items []string, chunkSize int) (chunks [][]string) {
 func (ss Strings) Join(sep string) string {
 	return strings.Join(ss, sep)
 }
+
+// Print prints one string entry per line
+func (ss Strings) Print(sep string) {
+	println(ss.Join(sep))
+}
