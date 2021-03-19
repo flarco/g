@@ -5,10 +5,12 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
+	"github.com/stretchr/testify/assert"
 )
 
 // ErrType is an error with details
@@ -111,13 +113,14 @@ func getCallerStack(levelsUp int) []string {
 // NewError returns stacktrace error with message
 func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 
+	CallerStack := getCallerStack(levelsUp)
 	if e == nil {
+		Warn("NewError called with nil error:\n  " + strings.Join(CallerStack, "\n  "))
 		return nil
 	}
 
 	MsgStack := []string{ArgsErrMsg(args...)}
 	Err := cast.ToString(e)
-	CallerStack := getCallerStack(levelsUp)
 	Position := 0
 
 	switch e.(type) {
@@ -218,6 +221,14 @@ func ErrorText(e error) string {
 		return e.Error()
 	}
 	return ""
+}
+
+// AssertNoError asserts there is no error an logs it if there is
+func AssertNoError(t *testing.T, e error) bool {
+	if e != nil {
+		LogError(e)
+	}
+	return assert.NoError(t, e)
 }
 
 // LogErrorMail handles logging of an error and mail it to self
