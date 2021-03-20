@@ -92,6 +92,11 @@ func RandString(charset string, n int) string {
 	return string(b)
 }
 
+// RandSuffix returns a random AplhanumericRunes suffix of `n` length
+func RandSuffix(str string, n int) string {
+	return str + RandString(AplhanumericRunes, n)
+}
+
 // RandInt64 returns a random positive number up to max
 func RandInt64(max int64) int64 {
 	if !randSeeded {
