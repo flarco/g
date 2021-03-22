@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	rand2 "math/rand"
@@ -26,7 +25,7 @@ func Hash(password string) (string, error) {
 	salt := make([]byte, SaltByteSize)
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		fmt.Print("Err generating random salt")
-		return "", errors.New("Err generating random salt")
+		return "", Error("Err generating random salt")
 	}
 
 	//todo: enhance: randomize itrs as well
@@ -46,18 +45,18 @@ func VerifyHash(raw, hash string) (bool, error) {
 	itr, err := strconv.Atoi(hparts[0])
 	if err != nil {
 		fmt.Printf("wrong hash %v", hash)
-		return false, errors.New("wrong hash, iteration is invalid")
+		return false, Error("wrong hash, iteration is invalid")
 	}
 	salt, err := base64.StdEncoding.DecodeString(hparts[1])
 	if err != nil {
 		fmt.Print("wrong hash, salt error:", err)
-		return false, errors.New("wrong hash, salt error:" + err.Error())
+		return false, Error("wrong hash, salt error:" + err.Error())
 	}
 
 	hsh, err := base64.StdEncoding.DecodeString(hparts[2])
 	if err != nil {
 		fmt.Print("wrong hash, hash error:", err)
-		return false, errors.New("wrong hash, hash error:" + err.Error())
+		return false, Error("wrong hash, hash error:" + err.Error())
 	}
 
 	rhash := pbkdf2.Key([]byte(raw), salt, itr, len(hsh), sha1.New)

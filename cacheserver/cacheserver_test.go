@@ -3,7 +3,6 @@ package cacheserver
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http/httptest"
 	"testing"
@@ -281,7 +280,7 @@ func TestInvalidPutWhenReading(t *testing.T) {
 type errReader int
 
 func (errReader) Read([]byte) (int, error) {
-	return 0, errors.New("test read error")
+	return 0, g.Error("test read error")
 }
 
 func BenchmarkCacheBCSet(b *testing.B) {
