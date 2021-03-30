@@ -17,8 +17,10 @@ var Debug bool
 
 // Config is the config for redis
 type Config struct {
-	URL string
-	Ctx context.Context
+	URL      string
+	Name     string
+	Handlers net.Handlers
+	Ctx      context.Context
 }
 
 // Cache is the redis cache layer
@@ -26,6 +28,7 @@ type Cache struct {
 	Context *g.Context
 	R       *redis.Client
 	Rs      *redsync.Redsync
+	PubSub  *PubSub
 	GMux    *redsync.Mutex
 	URL     *net.URL
 }
@@ -59,6 +62,10 @@ func NewCache(cfg Config) (c *Cache, err error) {
 
 	g.Info("connected to redis")
 
+	if cfg.Name == "" {
+		cfg.Name = g.RandSuffix("pubsub-", 4)
+	}
+
 	c = &Cache{
 		Context: &context,
 		R:       rdb,
@@ -66,6 +73,7 @@ func NewCache(cfg Config) (c *Cache, err error) {
 		GMux:    mutex,
 		URL:     u,
 	}
+	c.PubSub = c.Subscribe(cfg.Name, cfg.Handlers)
 
 	return
 }
@@ -75,10 +83,29 @@ func (c *Cache) Ctx() context.Context {
 	return c.Context.Ctx
 }
 
+// Close closes the connection
+func (c *Cache) Close() {
+	c.PubSub.PubSub.Close()
+	c.R.Close()
+}
+
+// NewMutex creates a mutex
+func (c *Cache) NewMutex(name interface{}) *redsync.Mutex {
+	return c.Rs.NewMutex(cast.ToString(name))
+}
+
 // Publish publishes a message
 func (c *Cache) Publish(topic string, msg net.Message) error {
 	sent := c.R.Publish(c.Ctx(), topic, msg.JSON())
-	return sent.Err()
+	if sent.Err() != nil {
+		return g.Error(sent.Err(), "could not publish msg to %s", topic)
+	}
+	return nil
+}
+
+// PublishWait publishes a message and wait
+func (c *Cache) PublishWait(topic string, msg net.Message, timeOut ...int) (rMsg net.Message, err error) {
+	return c.PubSub.PublishWait(topic, msg, timeOut...)
 }
 
 // PublishContext publishes a message with context
@@ -89,12 +116,16 @@ func (c *Cache) PublishContext(ctx context.Context, topic string, msg net.Messag
 
 // Subscribe creates a new pub/sub
 func (c *Cache) Subscribe(name string, handlers net.Handlers) *PubSub {
-	return &PubSub{
-		Name:     name,
-		PubSub:   c.R.Subscribe(c.Ctx(), name),
-		Handlers: handlers,
-		c:        c,
+	ps := &PubSub{
+		Name:          name,
+		PubSub:        c.R.Subscribe(c.Ctx(), name),
+		Handlers:      handlers,
+		ReplyHandlers: map[string]net.Handler{},
+		c:             c,
 	}
+	c.printDebug(ps.PubSub)
+	go ps.Loop()
+	return ps
 }
 
 func (c *Cache) printDebug(status interface{}) {
@@ -113,6 +144,8 @@ func (c *Cache) printDebug(status interface{}) {
 			str = status.(*redis.StringSliceCmd).String()
 		case *redis.BoolCmd:
 			str = status.(*redis.BoolCmd).String()
+		case *redis.PubSub:
+			str = status.(*redis.PubSub).String()
 		default:
 			g.Warn("did not handle printDebug for status: %#v", status)
 			return
@@ -214,6 +247,15 @@ func (c *Cache) GetContext(ctx context.Context, key string) (val string, err err
 		err = g.Error(err, "could not get value for %s", key)
 	} else {
 		val = status.Val()
+	}
+	return
+}
+
+// Del deletes keys
+func (c *Cache) Del(keys ...string) (err error) {
+	err = c.DelContext(c.Context.Ctx, keys...)
+	if err != nil {
+		err = g.Error(err, "could not del keys: %#v", keys)
 	}
 	return
 }

@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/flarco/g"
+	"github.com/flarco/g/net"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCache(t *testing.T) {
 	Debug = true
 	c, err := NewCache(Config{
-		URL: os.Getenv("CEREME_REDIS_TEST_URL"),
+		URL: os.Getenv("REDIS_MPC_URL"),
 		Ctx: context.Background(),
 	})
 	assert.NoError(t, err)
@@ -75,4 +76,57 @@ func TestCache(t *testing.T) {
 
 	err = c.HDel("testhash", "k1", "k3")
 	assert.NoError(t, err)
+}
+
+func TestPubSub(t *testing.T) {
+	Debug = true
+	cache1, err := NewCache(Config{
+		URL: os.Getenv("REDIS_MPC_URL"),
+		Ctx: context.Background(),
+	})
+	assert.NoError(t, err)
+
+	testType := net.MessageType("test")
+
+	rcvd := false
+	cache2, err := NewCache(Config{
+		URL: os.Getenv("REDIS_MPC_URL"),
+		Ctx: context.Background(),
+		Handlers: net.Handlers{
+			testType: func(msg net.Message) (rMsg net.Message) {
+				g.Debug("received %s", msg.Type)
+				rcvd = true
+				return
+			},
+		},
+	})
+
+	cache1.Publish(cache2.PubSub.Name, net.NewMessage(testType, g.M()))
+	time.Sleep(150 * time.Millisecond)
+	assert.True(t, rcvd)
+
+	// test locks
+	mux1 := cache1.NewMutex(1)
+	err = mux1.Lock()
+	assert.NoError(t, err)
+	done, err := mux1.Unlock()
+	assert.NoError(t, err)
+	assert.True(t, done)
+
+	locked := false
+	go func() {
+		mux1.Lock()
+		locked = true
+		defer mux1.Unlock()
+		time.Sleep(2 * time.Second)
+		locked = false
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+
+	mux2 := cache2.NewMutex(1)
+	assert.True(t, locked)
+	mux2.Lock()
+	assert.False(t, locked)
+	mux2.Unlock()
 }
