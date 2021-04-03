@@ -244,7 +244,7 @@ func (p *Proc) scan() {
 	}()
 }
 
-// Run executes the dbt command, prints output and waits for it to finish
+// Run executes a command, prints output and waits for it to finish
 func (p *Proc) Run(args ...string) (err error) {
 	err = p.Start(args...)
 	if err != nil {
@@ -303,5 +303,14 @@ func (p *Proc) StderrScannerLines() (scanner *bufio.Scanner) {
 
 // Wait waits for the process to end
 func (p *Proc) Wait() error {
-	return p.Cmd.Wait()
+	err := p.Cmd.Wait()
+	if err != nil {
+		return g.Error(err, p.CmdErrorText())
+	}
+
+	if code := p.Cmd.ProcessState.ExitCode(); code != 0 {
+		return g.Error("exit code = %d. %s", code, p.CmdErrorText())
+	}
+
+	return nil
 }
