@@ -142,6 +142,20 @@ func disableColor() bool {
 	return DisableColor
 }
 
+// PP prints the Pretty Printed JSON struct
+func PP(v interface{}) {
+	if IsDebugLow() {
+		args := addCaller([]interface{}{})
+		doLog(LogErr.Debug(), Pretty(v), args)
+	}
+}
+
+// Pretty returns the Pretty Printed JSON struct string
+func Pretty(v interface{}) string {
+	vv, _ := json.MarshalIndent(v, "", "  ")
+	return string(vv)
+}
+
 // P prints the value of object
 func P(v interface{}) {
 	if IsDebugLow() {
