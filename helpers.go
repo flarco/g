@@ -2,8 +2,10 @@ package g
 
 import (
 	"bufio"
+	"bytes"
 	"database/sql/driver"
 	"fmt"
+	"html/template"
 	"io"
 	"net"
 	"os"
@@ -502,4 +504,23 @@ func (ss Strings) Join(sep string) string {
 // Print prints one string entry per line
 func (ss Strings) Print(sep string) {
 	println(ss.Join(sep))
+}
+
+// ExecuteTemplate executes the templates passed
+func ExecuteTemplate(text string, values map[string]interface{}) (out string, err error) {
+
+	var output bytes.Buffer
+	t, err := template.New("t1").Parse(text)
+	if err != nil {
+		err = Error(err, "error parsing template")
+		return
+	}
+
+	err = t.Execute(&output, values)
+	if err != nil {
+		err = Error(err, "error execute template")
+		return
+	}
+
+	return output.String(), nil
 }
