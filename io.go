@@ -3,13 +3,8 @@ package g
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
 	"os"
-	"path"
 	"runtime"
-
-	"github.com/markbates/pkger"
-	"github.com/markbates/pkger/pkging"
 )
 
 // UserHomeDir returns the home directory of the running user
@@ -45,29 +40,4 @@ func Peek(reader io.Reader, n int) (data []byte, readerNew io.Reader, err error)
 	}
 
 	return
-}
-
-// PkgerString returns the packager file string
-func PkgerString(name string) (content string, err error) {
-	_, filename, _, _ := runtime.Caller(1)
-	file, err := pkger.Open(path.Join(path.Dir(filename), name))
-	if err != nil {
-		return "", Error(err, "could not open pker file: %s", name)
-	}
-
-	fileBytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		return "", Error(err, "could not read pker file: ", name)
-	}
-	return string(fileBytes), nil
-}
-
-// PkgerFile returns the packager file
-func PkgerFile(name string) (file pkging.File, err error) {
-	_, filename, _, _ := runtime.Caller(1)
-	TemplateFile, err := pkger.Open(path.Join(path.Dir(filename), name))
-	if err != nil {
-		return nil, Error(err, "cannot open "+path.Join(path.Dir(filename), name))
-	}
-	return TemplateFile, nil
 }
