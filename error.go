@@ -120,17 +120,18 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 	}
 
 	MsgStack := []string{ArgsErrMsg(args...)}
-	Err := cast.ToString(e)
+	Err := ""
 	Position := 0
 
-	switch e.(type) {
+	switch et := e.(type) {
 	case *ErrType:
 		errPrev := e.(*ErrType)
 		Err = errPrev.Err
 		MsgStack = append(errPrev.MsgStack, MsgStack...)
-		CallerStack = append([]string{errPrev.CallerStack[0]}, CallerStack...)
+		CallerStack = errPrev.CallerStack
 		Position = errPrev.Position + 1
-	case string:
+	default:
+		_ = et
 		MsgStack = []string{}
 		args = append([]interface{}{e}, args...)
 		Err = ArgsErrMsg(args...)
