@@ -15,10 +15,10 @@ import (
 
 // ErrType is an error with details
 type ErrType struct {
-	Err         string   `json:"err"` // the original error string
-	MsgStack    []string `json:"-"`   // addition details for error context
-	CallerStack []string `json:"-"`   // the caller stack
-	Position    int      `json:"-"`   // the position in the array stack (0 is first)
+	Err         string   // the original error string
+	MsgStack    []string // addition details for error context
+	CallerStack []string // the caller stack
+	Position    int      // the position in the array stack (0 is first)
 }
 
 // MsgStacked return a stacked error message
