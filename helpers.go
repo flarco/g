@@ -366,19 +366,15 @@ func AsMap(value interface{}, toLowerKey ...bool) map[string]interface{} {
 		lowerKey = true
 	}
 
-	switch value.(type) {
+	switch m1 := value.(type) {
 	case map[string]interface{}:
-		m1 := value.(map[string]interface{})
-		for k, v := range m1 {
-			m0[k] = v
-		}
+		m0 = m1
 	case map[string]string:
-		m1 := value.(map[string]string)
 		for k, v := range m1 {
 			m0[k] = v
 		}
 	case Map:
-		m0 = value.(Map)
+		m0 = m1
 	default:
 		v := reflect.ValueOf(value)
 		if v.Kind() == reflect.Map {

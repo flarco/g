@@ -189,3 +189,20 @@ func TestMatches(t *testing.T) {
 	g := MatchesGroup("oracle://{username}:{password}@{tns}", "{([a-zA-Z]+)}", 0)
 	assert.Equal(t, g[2], "tns")
 }
+
+// go test -bench=. -benchmem -run '^BenchmarkIsIdentifier'
+// go test -bench=. -run BenchmarkIsIdentifier
+func BenchmarkToMap(b *testing.B) {
+	m := map[string]interface{}{"1": 1}
+	for i := 0; i < b.N; i++ {
+		ToMap(m)
+	}
+}
+
+// go test -bench=. -run '^Benchmark'
+func BenchmarkAsMap(b *testing.B) {
+	m := map[string]interface{}{"1": 1}
+	for i := 0; i < b.N; i++ {
+		AsMap(m)
+	}
+}

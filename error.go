@@ -125,16 +125,16 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 
 	switch et := e.(type) {
 	case *ErrType:
-		errPrev := e.(*ErrType)
-		Err = errPrev.Err
-		MsgStack = append(errPrev.MsgStack, MsgStack...)
-		CallerStack = errPrev.CallerStack
-		Position = errPrev.Position + 1
-	default:
-		_ = et
+		Err = et.Err
+		MsgStack = append(et.MsgStack, MsgStack...)
+		CallerStack = et.CallerStack
+		Position = et.Position + 1
+	case error:
 		MsgStack = []string{}
-		args = append([]interface{}{e}, args...)
-		Err = ArgsErrMsg(args...)
+		Err = ArgsErrMsg(args...) + F(" [%s]", et.Error())
+	default:
+		MsgStack = []string{}
+		Err = ArgsErrMsg(args...) + F(" [%#v]", e)
 	}
 
 	return &ErrType{
