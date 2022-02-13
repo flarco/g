@@ -132,6 +132,9 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 	case error:
 		MsgStack = []string{}
 		Err = ArgsErrMsg(args...) + F(" [%s]", et.Error())
+	case string:
+		MsgStack = []string{}
+		Err = ArgsErrMsg(append([]interface{}{e}, args...)...)
 	default:
 		MsgStack = []string{}
 		Err = ArgsErrMsg(args...) + F(" [%#v]", e)
