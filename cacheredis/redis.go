@@ -40,6 +40,7 @@ func NewCache(cfg Config) (c *Cache, err error) {
 	u, err := net.NewURL(cfg.URL)
 	if err != nil {
 		err = g.Error(err, "invalid redis URL")
+		return
 	}
 
 	rdb := redis.NewClient(&redis.Options{
@@ -60,7 +61,7 @@ func NewCache(cfg Config) (c *Cache, err error) {
 	rs := redsync.New(pool)
 	mutex := rs.NewMutex("global-mutex")
 
-	g.Info("connected to redis")
+	g.Info("connected to redis (%s)", cfg.Name)
 
 	if cfg.Name == "" {
 		cfg.Name = g.RandSuffix("pubsub-", 4)
