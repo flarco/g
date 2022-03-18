@@ -205,7 +205,8 @@ func CliProcess() (bool, error) {
 							}
 						}
 					}
-					if sc2.Name == "list" && *cObj.Vals["list=limit"].(*string) == "" {
+					_, ok := cObj.Vals["list=limit"]
+					if sc2.Name == "list" && !ok {
 						defLimit := "20"
 						cObj.Vals["list=limit"] = &defLimit
 					}
