@@ -9,6 +9,7 @@ import (
 
 // CliArr is the array of CliSC
 var CliArr = []*CliSC{}
+var AllScs = []*CliSC{}
 
 // CliSC represents a CLI subcommand
 type CliSC struct {
@@ -20,11 +21,12 @@ type CliSC struct {
 	PosFlags    []Flag
 	Flags       []Flag
 	CrudFlags   []Flag
-	ExecProcess func(c *CliSC) error
+	ExecProcess func(c *CliSC) (bool, error)
 	SubComs     []*CliSC
 	CrudOps     []string
 	CrudPK      []string
 	InclAccID   bool
+	parentSc    *CliSC
 }
 
 // Flag represents a CLI Flag
@@ -45,6 +47,7 @@ func (c *CliSC) Add() *CliSC {
 func (c *CliSC) Make() *CliSC {
 	c.Sc = flaggy.NewSubcommand(c.Name)
 	c.Sc.Description = c.Description
+	AllScs = append(AllScs, c)
 
 	c.Vals = map[string]interface{}{}
 	for _, f := range c.Flags {
@@ -52,6 +55,10 @@ func (c *CliSC) Make() *CliSC {
 		case "bool":
 			val := false
 			c.Sc.Bool(&val, f.ShortName, f.Name, f.Description)
+			c.Vals[f.Name] = &val
+		case "slice":
+			val := []string{}
+			c.Sc.StringSlice(&val, f.ShortName, f.Name, f.Description)
 			c.Vals[f.Name] = &val
 		default:
 			val := ""
@@ -64,17 +71,6 @@ func (c *CliSC) Make() *CliSC {
 		val := ""
 		c.Sc.AddPositionalValue(&val, f.Name, i+1, true, f.Description)
 		c.Vals[f.Name] = &val
-	}
-
-	listFlagsAllowed := map[string]string{
-		"hostname":   "",
-		"name":       "",
-		"type":       "",
-		"account_id": "",
-		"email":      "",
-		"role":       "",
-		"job_name":   "",
-		"active":     "",
 	}
 
 	for _, op := range c.CrudOps {
@@ -120,16 +116,10 @@ func (c *CliSC) Make() *CliSC {
 			listSC.String(&last, "", "last", "show the N most recent records. (max: 100)")
 			c.Vals["list=last"] = &last
 
-			id := ""
-			listSC.String(&id, "", "id", F("show the %s with the provided id", c.Singular))
-			c.Vals["list=id"] = &id
-
 			for _, f := range c.CrudFlags {
-				if _, ok := listFlagsAllowed[f.Name]; ok {
-					val := ""
-					listSC.String(&val, "", f.Name, F("filter results by %s", f.Name))
-					c.Vals["list="+f.Name] = &val
-				}
+				val := ""
+				listSC.String(&val, "", f.Name, F("filter results by %s", f.Name))
+				c.Vals["list="+f.Name] = &val
 			}
 			c.Sc.AttachSubcommand(listSC, 1)
 		case "remove":
@@ -150,11 +140,9 @@ func (c *CliSC) Make() *CliSC {
 	}
 
 	for _, s := range c.SubComs {
+		s.parentSc = c
 		s.Make()
 		c.Sc.AttachSubcommand(s.Sc, 1)
-		if s.ExecProcess == nil {
-			s.ExecProcess = c.ExecProcess
-		}
 	}
 
 	return c
@@ -183,6 +171,12 @@ func CliProcess() (bool, error) {
 					blankCnt++
 				}
 				m[k] = i
+			case *[]string:
+				ss := *v.(*[]string)
+				if len(ss) == 0 {
+					blankCnt++
+				}
+				m[k] = ss
 			default:
 				s := *v.(*string)
 				if s == "" {
@@ -194,8 +188,10 @@ func CliProcess() (bool, error) {
 		return blankCnt == len(m)
 	}
 
-	for _, cObj := range CliArr {
-		if cObj.Sc.Used {
+	for _, cObj := range AllScs {
+
+		if cObj.Sc.Used && cObj.ExecProcess != nil {
+			// Debug("used -> %s", cObj.Name)
 			for _, sc2 := range cObj.Sc.Subcommands {
 				if sc2.Used {
 					for _, scCli := range cObj.SubComs {
@@ -219,11 +215,17 @@ func CliProcess() (bool, error) {
 
 			// delete blanks, prepare values
 			for k, v := range cObj.Vals {
-				val := cast.ToString(v)
-				if val == "" {
-					delete(cObj.Vals, k)
-					continue
+
+				switch v.(type) {
+				case []string:
+				default:
+					val := cast.ToString(v)
+					if val == "" {
+						delete(cObj.Vals, k)
+						continue
+					}
 				}
+
 				keyArr := strings.Split(k, "=")
 				if len(keyArr) == 2 {
 					cObj.Vals[keyArr[1]] = v
@@ -238,11 +240,11 @@ func CliProcess() (bool, error) {
 				}
 			}
 
-			err := cObj.ExecProcess(cObj)
+			ok, err := cObj.ExecProcess(cObj)
 			if err != nil {
 				err = Error(err)
 			}
-			return true, err
+			return ok, err
 		}
 	}
 
