@@ -228,6 +228,37 @@ func Matches(whole, pattern string) (matches []Match) {
 	return
 }
 
+func WildCardMatch(whole string, pattens []string) bool {
+	whole = strings.TrimSpace(strings.ToLower(whole))
+	for _, pattern := range pattens {
+		pattern = strings.TrimSpace(strings.ToLower(pattern))
+		if strings.HasSuffix(pattern, "*") &&
+			strings.HasPrefix(whole, strings.TrimSuffix(pattern, "*")) {
+			return true
+		}
+		if strings.HasPrefix(pattern, "*") &&
+			strings.HasSuffix(whole, strings.TrimPrefix(pattern, "*")) {
+			return true
+		}
+
+		patternTrimmed := strings.TrimSuffix(strings.TrimPrefix(pattern, "*"), "*")
+		if strings.HasSuffix(pattern, "*") &&
+			strings.HasPrefix(pattern, "*") &&
+			strings.Contains(whole, patternTrimmed) {
+			return true
+		}
+		if patternArr := strings.Split(pattern, "*"); len(patternArr) == 2 {
+			if strings.HasPrefix(whole, patternArr[0]) && strings.HasSuffix(whole, patternArr[1]) {
+				return true
+			}
+		}
+		if whole == pattern {
+			return true
+		}
+	}
+	return false
+}
+
 // PrintT prints the type of object
 func PrintT(v interface{}) {
 	if IsDebugLow() {
