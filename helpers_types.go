@@ -22,8 +22,8 @@ type Context struct {
 
 // SizedWaitGroup with separate wait groups for read & write
 type SizedWaitGroup struct {
-	Read  sizedwaitgroup.SizedWaitGroup
-	Write sizedwaitgroup.SizedWaitGroup
+	Read  *sizedwaitgroup.SizedWaitGroup
+	Write *sizedwaitgroup.SizedWaitGroup
 	Limit int
 }
 

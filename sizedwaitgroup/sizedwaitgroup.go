@@ -23,12 +23,12 @@ type SizedWaitGroup struct {
 // New creates a SizedWaitGroup.
 // The limit parameter is the maximum amount of
 // goroutines which can be started concurrently.
-func New(limit int) SizedWaitGroup {
+func New(limit int) *SizedWaitGroup {
 	size := math.MaxInt32 // 2^32 - 1
 	if limit > 0 {
 		size = limit
 	}
-	return SizedWaitGroup{
+	return &SizedWaitGroup{
 		Size: size,
 
 		current: make(chan struct{}, size),
