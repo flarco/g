@@ -164,6 +164,19 @@ func (p *Proc) SetArgs(args ...string) {
 	p.Args = args
 }
 
+func (p *Proc) Close() (err error) {
+	wc, ok := p.StdinWriter.(io.WriteCloser)
+	if ok {
+		err = wc.Close()
+		if err != nil {
+			return g.Error(err, "could not close StdinPipe")
+		}
+	} else {
+		g.Debug("could not cast to io.WriteCloser")
+	}
+	return nil
+}
+
 // Start executes the command
 func (p *Proc) Start(args ...string) (err error) {
 	if len(args) > 0 {
