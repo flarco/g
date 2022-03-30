@@ -13,6 +13,7 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cast"
 )
 
@@ -42,9 +43,21 @@ func UpdatePublicIP() error {
 	return nil
 }
 
+type ProcStats struct {
+	CpuPct     float64
+	CpuTime    float64
+	RamPct     float64
+	RamRss     uint64
+	RamTotal   uint64
+	ReadBytes  uint64
+	WriteBytes uint64
+	TxBytes    uint64
+	RcBytes    uint64
+}
+
 // GetMachineProcStats returns the machine performance metrics
-func GetMachineProcStats() map[string]interface{} {
-	statsMap := map[string]interface{}{}
+func GetMachineProcStats() ProcStats {
+	stats := ProcStats{}
 
 	netCounters, _ := net.IOCounters(true)
 
@@ -63,18 +76,61 @@ func GetMachineProcStats() map[string]interface{} {
 	memRAM, _ := mem.VirtualMemory()
 
 	if len(cpuPct) != 0 {
-		statsMap["cpu_pct"] = cpuPct[0]
+		stats.CpuPct = cpuPct[0]
 	}
 	if len(cpuTime) != 0 {
-		statsMap["cpu_time"] = cpuTime[0].Total()
+		stats.CpuTime = cpuTime[0].Total()
 	}
-	statsMap["ram_pct"] = memRAM.UsedPercent
-	statsMap["ram_rss"] = memRAM.Used
-	statsMap["ram_total"] = memRAM.Total
-	statsMap["tx_bytes"] = txBytes
-	statsMap["rc_bytes"] = rcBytes
 
-	return statsMap
+	stats.RamPct = memRAM.UsedPercent
+	stats.RamRss = memRAM.Used
+	stats.RamTotal = memRAM.Total
+	stats.TxBytes = txBytes
+	stats.RcBytes = rcBytes
+
+	return stats
+}
+
+func GetProcStats(pid int) ProcStats {
+	stats := ProcStats{}
+	proc, err := process.NewProcess(cast.ToInt32(pid))
+	if err != nil {
+		return stats
+	}
+
+	cpuPct, err := proc.CPUPercent()
+	if err == nil {
+		stats.CpuPct = cpuPct
+	}
+
+	cpuTime, err := proc.Times()
+	if err == nil {
+		stats.CpuTime = cpuTime.Total()
+	}
+
+	ramPct, err := proc.MemoryPercent()
+	if err == nil {
+		stats.RamPct = cast.ToFloat64(ramPct)
+	}
+
+	ramInfo, err := proc.MemoryInfo()
+	if err == nil {
+		stats.RamRss = ramInfo.RSS
+	}
+
+	netInfo, err := proc.NetIOCounters(false)
+	if err == nil {
+		stats.TxBytes = cast.ToUint64(netInfo[0].BytesSent)
+		stats.RcBytes = cast.ToUint64(netInfo[0].BytesRecv)
+	}
+
+	diskInfo, err := proc.IOCounters()
+	if err == nil {
+		stats.ReadBytes = diskInfo.ReadBytes
+		stats.WriteBytes = diskInfo.WriteBytes
+	}
+
+	return stats
 }
 
 // GetMachineInfo obtains host information
