@@ -1,32 +1,11 @@
 package g
 
 import (
-	"context"
 	"crypto/tls"
 	"os"
-	"time"
 
-	"github.com/mailgun/mailgun-go/v3"
 	"gopkg.in/gomail.v2"
 )
-
-var (
-	// Mg is Mailgun object
-	Mg = mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
-)
-
-// SendEmailMG sends an email with MailGun
-func SendEmailMG(msg *mailgun.Message) (string, error) {
-	if os.Getenv("TESTING") == "TRUE" {
-		return "", nil
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	_, id, err := Mg.Send(ctx, msg)
-	return id, err
-}
 
 // AlertEmail is the email address to send errors to
 var AlertEmail = os.Getenv("ALERT_EMAIL")
