@@ -13,7 +13,7 @@ require (
 	github.com/integrii/flaggy v1.4.4
 	github.com/jaypipes/ghw v0.6.1
 	github.com/jmoiron/sqlx v1.2.0
-	github.com/json-iterator/go v1.1.10
+	github.com/json-iterator/go v1.1.12
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/lib/pq v1.0.0
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
