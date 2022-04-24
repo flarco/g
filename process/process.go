@@ -17,6 +17,7 @@ import (
 type Session struct {
 	Proc           *Proc
 	Alias          map[string]string
+	Env            map[string]string
 	Workdir        string
 	Print          bool
 	Stderr, Stdout string
@@ -28,6 +29,7 @@ type Session struct {
 type Proc struct {
 	Bin                        string
 	Args                       []string
+	Env                        map[string]string
 	Cmd                        *exec.Cmd
 	Workdir                    string
 	Print                      bool
@@ -47,6 +49,7 @@ type scanConfig struct {
 func NewSession() (s *Session) {
 	s = &Session{
 		Alias: map[string]string{},
+		Env:   map[string]string{},
 	}
 	return
 }
@@ -84,6 +87,7 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 		err = g.Error(err, "could not init process")
 		return
 	}
+	p.Env = s.Env
 	p.Workdir = s.Workdir
 	p.Print = s.Print
 	p.scanner = s.scanner
@@ -142,6 +146,7 @@ func NewProc(bin string, args ...string) (p *Proc, err error) {
 	p = &Proc{
 		Bin:  bin,
 		Args: args,
+		Env:  map[string]string{},
 	}
 
 	if !p.ExecutableFound() {
@@ -184,6 +189,8 @@ func (p *Proc) Start(args ...string) (err error) {
 	}
 	p.Cmd = exec.Command(p.Bin, p.Args...)
 	p.Cmd.Dir = p.Workdir
+	p.Cmd.Env = g.MapToKVArr(p.Env)
+
 	p.Stdout.Reset()
 	p.Stderr.Reset()
 
