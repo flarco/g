@@ -3,7 +3,6 @@ package g
 import (
 	"context"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -76,9 +75,7 @@ func (c *Context) MemBasedLimit(percentLimit int) {
 // and cancels the context
 func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 	if E != nil {
-		if !strings.Contains(E.Error(), " --- at ") && IsDebugLow() {
-			E = NewError(3, E, args...)
-		}
+		E = NewError(3, E, args...)
 		c.Cancel() // cancel context
 	}
 	return c.ErrGroup.Capture(E)

@@ -285,8 +285,12 @@ func (e *ErrorGroup) Err() error {
 	}
 
 	errstrings := []string{}
-	for _, er := range e.Errors {
-		errstrings = append(errstrings, er.Error())
+	for _, err := range e.Errors {
+		if err2, ok := err.(*ErrType); ok && IsDebugLow() {
+			errstrings = append(errstrings, err2.Debug())
+		} else {
+			errstrings = append(errstrings, err.Error())
+		}
 	}
 	return fmt.Errorf(strings.Join(errstrings, "\n"))
 }
