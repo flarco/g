@@ -33,8 +33,8 @@ func NewContext(parentCtx context.Context, concurencyLimits ...int) Context {
 	concurencyLimit := defaultConcurencyLimit
 	if len(concurencyLimits) > 0 {
 		concurencyLimit = concurencyLimits[0]
-	} else if os.Getenv("_CONCURENCY_LIMIT") != "" {
-		concurencyLimit = cast.ToInt(os.Getenv("_CONCURENCY_LIMIT"))
+	} else if os.Getenv("CONCURENCY_LIMIT") != "" {
+		concurencyLimit = cast.ToInt(os.Getenv("CONCURENCY_LIMIT"))
 	}
 	ctx, cancel := context.WithCancel(parentCtx)
 	wg := SizedWaitGroup{

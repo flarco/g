@@ -21,7 +21,7 @@ func IsPointer(obj interface{}) bool {
 // IsSlice returns `true` is obj is a slice
 func IsSlice(obj interface{}) bool {
 	value := reflect.ValueOf(obj)
-	return value.Kind() == reflect.Slice
+	return value.Kind() == reflect.Slice || value.Kind() == reflect.Array
 }
 
 // StructFieldsMapToKey returns a map of fields name to key
