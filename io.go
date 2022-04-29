@@ -41,3 +41,43 @@ func Peek(reader io.Reader, n int) (data []byte, readerNew io.Reader, err error)
 
 	return
 }
+
+// A PipeReader is the read half of a pipe.
+type Pipe struct {
+	Reader       *io.PipeReader
+	Writer       *io.PipeWriter
+	BytesRead    int64
+	BytesWritten int64
+}
+
+func (p *Pipe) Read(data []byte) (n int, err error) {
+	br, err := p.Reader.Read(data)
+	p.BytesRead = p.BytesRead + int64(br)
+	return br, err
+}
+
+func (p *Pipe) Write(data []byte) (n int, err error) {
+	bw, err := p.Writer.Write(data)
+	p.BytesWritten = p.BytesWritten + int64(bw)
+	return bw, err
+}
+
+func (p *Pipe) close() error {
+	eg := ErrorGroup{}
+	eg.Capture(p.Reader.Close())
+	eg.Capture(p.Writer.Close())
+	return eg.Err()
+}
+
+func NewPipe() *Pipe {
+	pipeR, pipeW := io.Pipe()
+
+	pipe := &Pipe{
+		Reader:       pipeR,
+		Writer:       pipeW,
+		BytesRead:    0,
+		BytesWritten: 0,
+	}
+
+	return pipe
+}
