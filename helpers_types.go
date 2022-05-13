@@ -59,7 +59,7 @@ func (c *Context) MemBasedLimit(percentLimit int) {
 	stats := GetMachineProcStats()
 	if ramPct := cast.ToInt(stats.RamPct); ramPct > percentLimit {
 		// loop until memory is low again
-		Warn("Memory based limit applied. High RAM detected: %d%. Consider lowering CONCURRENCY setting.", ramPct)
+		Warn("Memory based limit applied. High RAM detected: %d%%. Consider lowering CONCURRENCY setting.", ramPct)
 		for {
 			time.Sleep(2 * time.Second)
 			ramPct = cast.ToInt(GetMachineProcStats().RamPct)
