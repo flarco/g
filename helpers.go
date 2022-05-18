@@ -3,7 +3,9 @@ package g
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
 	"database/sql/driver"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io"
@@ -550,4 +552,9 @@ func ExecuteTemplate(text string, values map[string]interface{}) (out string, er
 	}
 
 	return output.String(), nil
+}
+
+func MD5(text ...string) string {
+	hash := md5.Sum([]byte(strings.Join(text, "")))
+	return hex.EncodeToString(hash[:])
 }
