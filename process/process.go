@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 
 	g "github.com/flarco/g"
 )
@@ -37,6 +38,8 @@ type Proc struct {
 	Stderr, Stdout             bytes.Buffer
 	StdinWriter                io.Writer
 	StderrReader, StdoutReader io.Reader
+	Pid                        int
+	Nice                       int
 	printMux                   sync.Mutex
 	scanner                    *scanConfig
 }
@@ -213,7 +216,12 @@ func (p *Proc) Start(args ...string) (err error) {
 		err = g.Error(err, p.CmdErrorText())
 	}
 
+	p.Pid = p.Cmd.ProcessState.Pid()
+
 	p.scan()
+
+	// set NICE
+	syscall.Setpriority(syscall.PRIO_PROCESS, p.Pid, p.Nice)
 
 	return
 }
