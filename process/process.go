@@ -10,9 +10,9 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"syscall"
 
 	g "github.com/flarco/g"
+	"github.com/spf13/cast"
 )
 
 // Session is a session to execute processes and keep output
@@ -222,8 +222,9 @@ func (p *Proc) Start(args ...string) (err error) {
 	p.scan()
 
 	// set NICE
-	if runtime.GOOS != "windows" {
-		syscall.Setpriority(syscall.PRIO_PROCESS, p.Pid, p.Nice)
+	if runtime.GOOS != "windows" && p.Nice != 0 {
+		niceCmd := exec.Command("renice", "-n", cast.ToString(p.Nice), "-p", cast.ToString(p.Pid))
+		niceCmd.Run()
 	}
 
 	return
