@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -221,7 +222,9 @@ func (p *Proc) Start(args ...string) (err error) {
 	p.scan()
 
 	// set NICE
-	syscall.Setpriority(syscall.PRIO_PROCESS, p.Pid, p.Nice)
+	if runtime.GOOS != "windows" {
+		syscall.Setpriority(syscall.PRIO_PROCESS, p.Pid, p.Nice)
+	}
 
 	return
 }
