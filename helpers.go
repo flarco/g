@@ -558,3 +558,46 @@ func MD5(text ...string) string {
 	hash := md5.Sum([]byte(strings.Join(text, "")))
 	return hex.EncodeToString(hash[:])
 }
+
+// JSONConvert converts from an interface to another via JSON
+func JSONConvert(source interface{}, destination interface{}) (err error) {
+	b, err := JSONMarshal(source)
+	if err != nil {
+		return Error(err, "could not marshal in JSONConvert")
+	}
+
+	err = JSONUnmarshal(b, destination)
+	if err != nil {
+		return Error(err, "could not unmarshal in JSONConvert")
+	}
+	return
+}
+
+// JSONMarshal does not escape html as the original marshaller does,
+// which escapes <, >, & etc. into unicode such as \u003e
+func JSONMarshal(t interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(t)
+	return bytes.TrimRight(buffer.Bytes(), "\n"), err
+}
+
+// JSONUnmarshalToMap
+func JSONUnmarshalToMap(b []byte) (map[string]interface{}, error) {
+	m := M()
+	err := json.Unmarshal(b, &m)
+	if err != nil {
+		err = Error(err, "could not unmarshal")
+	}
+	return m, err
+}
+
+// JSONUnmarshal
+func JSONUnmarshal(b []byte, p interface{}) error {
+	err := json.Unmarshal(b, p)
+	if err != nil {
+		err = Error(err, "could not unmarshal")
+	}
+	return err
+}

@@ -216,7 +216,7 @@ func (p *Proc) Start(args ...string) (err error) {
 		err = g.Error(err, p.CmdErrorText())
 	}
 
-	p.Pid = p.Cmd.ProcessState.Pid()
+	p.Pid = p.Cmd.Process.Pid
 
 	p.scan()
 

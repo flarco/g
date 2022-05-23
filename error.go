@@ -123,21 +123,46 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 	Err := ""
 	Position := 0
 
+	errPrev := ErrType{}
 	switch et := e.(type) {
 	case *ErrType:
 		Err = et.Err
 		MsgStack = append(et.MsgStack, MsgStack...)
 		CallerStack = et.CallerStack
 		Position = et.Position + 1
-	case error:
-		MsgStack = []string{}
-		Err = ArgsErrMsg(args...) + F(" [%s]", et.Error())
 	case string:
-		MsgStack = []string{}
-		Err = ArgsErrMsg(append([]interface{}{e}, args...)...)
+		if e0 := JSONUnmarshal([]byte(et), &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
+			Err = errPrev.Err
+			MsgStack = append(errPrev.MsgStack, MsgStack...)
+			Position = errPrev.Position + 1
+			if CallerStack[0] == errPrev.CallerStack[0] {
+				CallerStack = errPrev.CallerStack
+			} else {
+				CallerStack = append(errPrev.CallerStack, CallerStack...)
+			}
+		} else {
+			MsgStack = []string{}
+			Err = ArgsErrMsg(args...) + F(" [%#v]", e)
+		}
 	default:
-		MsgStack = []string{}
-		Err = ArgsErrMsg(args...) + F(" [%#v]", e)
+		if e0 := JSONConvert(e, &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
+			Err = errPrev.Err
+			MsgStack = append(errPrev.MsgStack, MsgStack...)
+			Position = errPrev.Position + 1
+			if CallerStack[0] == errPrev.CallerStack[0] {
+				CallerStack = errPrev.CallerStack
+			} else {
+				CallerStack = append(errPrev.CallerStack, CallerStack...)
+			}
+		} else {
+			MsgStack = []string{}
+			switch et := e.(type) {
+			case error:
+				Err = ArgsErrMsg(args...) + F(" [%s]", et.Error())
+			default:
+				Err = ArgsErrMsg(args...) + F(" [%#v]", e)
+			}
+		}
 	}
 
 	return &ErrType{
