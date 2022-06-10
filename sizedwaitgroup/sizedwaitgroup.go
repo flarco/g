@@ -7,7 +7,10 @@ import (
 	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 )
+
+var MaxSize int = math.MaxInt32
 
 // SizedWaitGroup has the same role and close to the
 // same API as the Golang sync.WaitGroup but adds a limit of
@@ -27,6 +30,9 @@ func New(limit int) *SizedWaitGroup {
 	size := math.MaxInt32 // 2^32 - 1
 	if limit > 0 {
 		size = limit
+	}
+	if size > MaxSize {
+		size = MaxSize
 	}
 	return &SizedWaitGroup{
 		Size: size,
@@ -60,6 +66,14 @@ func (s *SizedWaitGroup) AddWithContext(ctx context.Context) error {
 			log.Printf("SizedWaitGroup: %d >= %d", s.queueSize, s.Size)
 		}
 	}
+
+	for {
+		if len(s.current) < MaxSize {
+			break
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
