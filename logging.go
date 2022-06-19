@@ -213,12 +213,9 @@ func Log(text string, args ...interface{}) {
 	}
 }
 
-func addCaller(args []interface{}) []interface{} {
-	if CallerLevel == 0 {
-		return args
-	}
+func getCaller(start, level int) string {
 	callStrArr := []string{}
-	for i := 2; i <= 2+CallerLevel-1; i++ {
+	for i := start; i <= start+level-1; i++ {
 		pc, file, no, ok := runtime.Caller(i)
 		details := runtime.FuncForPC(pc)
 		funcNameArr := strings.Split(details.Name(), ".")
@@ -229,12 +226,21 @@ func addCaller(args []interface{}) []interface{} {
 			callStrArr = append(callStrArr, callStr)
 		}
 	}
-	if len(callStrArr) > 0 {
-		sort.SliceStable(callStrArr, func(i, j int) bool {
-			return true
-		})
-		args = append(args, M("caller", strings.Join(callStrArr, " > ")))
+	sort.SliceStable(callStrArr, func(i, j int) bool {
+		return true
+	})
+	return strings.Join(callStrArr, " > ")
+}
+
+func addCaller(args []interface{}) []interface{} {
+	if CallerLevel == 0 {
+		return args
 	}
+
+	if caller := getCaller(3, CallerLevel); caller != "" {
+		args = append(args, M("caller", caller))
+	}
+
 	return args
 }
 
