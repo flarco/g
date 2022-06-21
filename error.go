@@ -142,7 +142,7 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 			}
 		} else {
 			MsgStack = []string{}
-			Err = ArgsErrMsg(args...) + F(" [%#v]", e)
+			Err = ArgsErrMsg(append([]any{et}, args...)...)
 		}
 	default:
 		if e0 := JSONConvert(e, &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
@@ -158,9 +158,9 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 			MsgStack = []string{}
 			switch et := e.(type) {
 			case error:
-				Err = ArgsErrMsg(args...) + F(" [%s]", et.Error())
+				Err = ArgsErrMsg(append([]any{et.Error()}, args...)...)
 			default:
-				Err = ArgsErrMsg(args...) + F(" [%#v]", e)
+				Err = ArgsErrMsg(append([]any{e}, args...)...)
 			}
 		}
 	}
