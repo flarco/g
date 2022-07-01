@@ -23,6 +23,7 @@ type SlackMessage struct {
 	Username    string            `json:"username,omitempty"`
 	IconEmoji   string            `json:"icon_emoji,omitempty"`
 	Channel     string            `json:"channel,omitempty"`
+	Type        string            `json:"type,omitempty"`
 	Text        string            `json:"text,omitempty"`
 	Attachments []SlackAttachment `json:"attachments,omitempty"`
 }

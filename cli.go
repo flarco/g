@@ -85,25 +85,36 @@ func (c *CliSC) Make() *CliSC {
 			}
 			c.Sc.AttachSubcommand(addSC, 1)
 		case "update":
-			addSC := flaggy.NewSubcommand("update")
-			addSC.Description = F("update existing %s", c.Singular)
+			updateSC := flaggy.NewSubcommand("update")
+			updateSC.Description = F("update existing %s", c.Singular)
 			id := ""
-			addSC.String(&id, "", "id", F("update the %s with the provided id", c.Singular))
+			updateSC.String(&id, "", "id", F("update the %s with the provided id", c.Singular))
 			c.Vals["update=id"] = &id
 			if c.InclAccID {
 				accID := ""
-				addSC.String(&accID, "", "account_id", F("update the %s with the provided account id", c.Singular))
+				updateSC.String(&accID, "", "account_id", F("update the %s with the provided account id", c.Singular))
 				c.Vals["update=account_id"] = &accID
 			}
 			for _, f := range c.CrudFlags {
-				val := new(string)
 				if _, ok := c.Vals["update="+f.Name]; ok {
 					continue
 				}
-				addSC.String(val, "", f.Name, f.Description)
-				c.Vals["update="+f.Name] = val
+				switch f.Type {
+				case "bool":
+					val := false
+					updateSC.Bool(&val, f.ShortName, f.Name, f.Description)
+					c.Vals[f.Name] = &val
+				case "slice":
+					val := []string{}
+					updateSC.StringSlice(&val, f.ShortName, f.Name, f.Description)
+					c.Vals[f.Name] = &val
+				default:
+					val := ""
+					updateSC.String(&val, f.ShortName, f.Name, f.Description)
+					c.Vals[f.Name] = &val
+				}
 			}
-			c.Sc.AttachSubcommand(addSC, 1)
+			c.Sc.AttachSubcommand(updateSC, 1)
 		case "list":
 			listSC := flaggy.NewSubcommand("list")
 			listSC.Description = F("list %ss", c.Singular)
@@ -135,7 +146,17 @@ func (c *CliSC) Make() *CliSC {
 			}
 			c.Sc.AttachSubcommand(removeSC, 1)
 		default:
-			continue
+			id := ""
+			newSC := flaggy.NewSubcommand(op)
+			newSC.Description = F("%s existing %s", op, c.Singular)
+			newSC.String(&id, "", "id", F("%s the %s with the provided id", op, c.Singular))
+			c.Vals[op+"=id"] = &id
+			if c.InclAccID {
+				accID := ""
+				newSC.String(&accID, "", "account_id", F("%s the %s with the provided account id", op, c.Singular))
+				c.Vals[op+"=account_id"] = &accID
+			}
+			c.Sc.AttachSubcommand(newSC, 1)
 		}
 	}
 
@@ -202,7 +223,7 @@ func CliProcess() (bool, error) {
 						}
 					}
 					_, ok := cObj.Vals["list=limit"]
-					if sc2.Name == "list" && !ok {
+					if sc2.Name == "list" && ok {
 						defLimit := "20"
 						cObj.Vals["list=limit"] = &defLimit
 					}
