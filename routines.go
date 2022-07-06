@@ -51,6 +51,7 @@ type ProcStats struct {
 	RamRss     uint64
 	RamTotal   uint64
 	DiskPct    float64
+	DiskFree   uint64
 	ReadBytes  uint64
 	WriteBytes uint64
 	TxBytes    uint64
@@ -95,6 +96,7 @@ func GetMachineProcStats() ProcStats {
 
 	if diskUsage != nil {
 		stats.DiskPct = diskUsage.UsedPercent
+		stats.DiskFree = diskUsage.Free
 	}
 
 	return stats
