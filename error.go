@@ -158,7 +158,10 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 			MsgStack = []string{}
 			switch et := e.(type) {
 			case error:
-				Err = ArgsErrMsg(append([]any{et.Error()}, args...)...)
+				Err = et.Error()
+				if len(args) > 0 {
+					MsgStack = []string{ArgsErrMsg(args...)}
+				}
 			default:
 				Err = ArgsErrMsg(append([]any{e}, args...)...)
 			}

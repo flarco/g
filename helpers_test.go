@@ -133,12 +133,20 @@ func TestError(t *testing.T) {
 	println(err1.Error())
 	println(ErrMsg(err1))
 	println("-----------------------")
-	err2 := Error(err, "additional\ndetails")
+	err2 := Error(err, "additional\ndetails %d", 4)
+	P(ArgsErrMsg("additional\ndetails"))
 	println(err2.Error())
 	println(ErrMsg(err2))
 	println("-----------------------")
+	err2a := Error("additional\ndetails %d", 3)
+	println(err2a.Error())
+	println("-----------------------")
+	err2b := Error(err2a, "moredetails %d", 5)
+	println(err2b.Error())
+	println("-----------------------")
 	err3 := Error(err2, "additional details on top")
 	LogFatal(err3)
+	println("-----------------------")
 }
 
 type wrapError struct {
