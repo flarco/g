@@ -11,6 +11,7 @@ import (
 
 	"github.com/jaypipes/ghw"
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
 	"github.com/shirou/gopsutil/process"
@@ -49,6 +50,7 @@ type ProcStats struct {
 	RamPct     float64
 	RamRss     uint64
 	RamTotal   uint64
+	DiskPct    float64
 	ReadBytes  uint64
 	WriteBytes uint64
 	TxBytes    uint64
@@ -70,10 +72,13 @@ func GetMachineProcStats() ProcStats {
 		txBytes = rcBytes + netCounter.BytesSent
 		rcBytes = rcBytes + netCounter.BytesRecv
 	}
+	stats.TxBytes = txBytes
+	stats.RcBytes = rcBytes
 
 	cpuPct, _ := cpu.Percent(0, false)
 	cpuTime, _ := cpu.Times(false)
 	memRAM, _ := mem.VirtualMemory()
+	diskUsage, _ := disk.Usage("/")
 
 	if len(cpuPct) != 0 {
 		stats.CpuPct = cpuPct[0]
@@ -82,11 +87,15 @@ func GetMachineProcStats() ProcStats {
 		stats.CpuTime = cpuTime[0].Total()
 	}
 
-	stats.RamPct = memRAM.UsedPercent
-	stats.RamRss = memRAM.Used
-	stats.RamTotal = memRAM.Total
-	stats.TxBytes = txBytes
-	stats.RcBytes = rcBytes
+	if memRAM != nil {
+		stats.RamPct = memRAM.UsedPercent
+		stats.RamRss = memRAM.Used
+		stats.RamTotal = memRAM.Total
+	}
+
+	if diskUsage != nil {
+		stats.DiskPct = diskUsage.UsedPercent
+	}
 
 	return stats
 }
