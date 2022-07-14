@@ -250,6 +250,7 @@ func (p *Proc) scanAndWait() {
 		if err != nil {
 			return err
 		}
+		text = strings.TrimSuffix(text, "\n")
 
 		p.printMux.Lock()
 		if p.Print {
