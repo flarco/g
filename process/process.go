@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	g "github.com/flarco/g"
 	"github.com/spf13/cast"
@@ -32,17 +33,20 @@ type Proc struct {
 	Bin                        string
 	Args                       []string
 	Env                        map[string]string
+	Err                        error
 	Cmd                        *exec.Cmd
 	Workdir                    string
-	Print                      bool
 	HideCmdInErr               bool
-	Stderr, Stdout             bytes.Buffer
-	StdinWriter                io.Writer
+	Print                      bool
+	Stderr, Stdout, Combined   bytes.Buffer
 	StderrReader, StdoutReader io.Reader
+	StdinWriter                io.Writer
 	Pid                        int
 	Nice                       int
-	printMux                   sync.Mutex
+	Done                       chan struct{} // finished with scanner
+	exited                     chan struct{} // process exited
 	scanner                    *scanConfig
+	printMux                   sync.Mutex
 }
 
 type scanConfig struct {
@@ -93,7 +97,6 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 	}
 	p.Env = s.Env
 	p.Workdir = s.Workdir
-	p.Print = s.Print
 	p.scanner = s.scanner
 
 	err = p.Run()
@@ -148,9 +151,11 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 // NewProc creates a new process and returns it
 func NewProc(bin string, args ...string) (p *Proc, err error) {
 	p = &Proc{
-		Bin:  bin,
-		Args: args,
-		Env:  map[string]string{},
+		Bin:    bin,
+		Args:   args,
+		Done:   make(chan struct{}),
+		exited: make(chan struct{}),
+		Env:    map[string]string{},
 	}
 
 	if !p.ExecutableFound() {
@@ -162,10 +167,7 @@ func NewProc(bin string, args ...string) (p *Proc, err error) {
 // ExecutableFound returns true if the executable is found
 func (p *Proc) ExecutableFound() bool {
 	_, err := exec.LookPath(p.Bin)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 // SetArgs sets the args for the command
@@ -191,12 +193,18 @@ func (p *Proc) Start(args ...string) (err error) {
 	if len(args) > 0 {
 		p.SetArgs(args...)
 	}
+
+	// reset channels
+	p.Done = make(chan struct{})
+	p.exited = make(chan struct{})
+
 	p.Cmd = exec.Command(p.Bin, p.Args...)
 	p.Cmd.Dir = p.Workdir
 	p.Cmd.Env = g.MapToKVArr(p.Env)
 
 	p.Stdout.Reset()
 	p.Stderr.Reset()
+	p.Combined.Reset()
 
 	p.StdoutReader, err = p.Cmd.StdoutPipe()
 	if err != nil {
@@ -219,7 +227,7 @@ func (p *Proc) Start(args ...string) (err error) {
 
 	p.Pid = p.Cmd.Process.Pid
 
-	p.scan()
+	go p.scanAndWait()
 
 	// set NICE
 	if runtime.GOOS != "windows" && p.Nice != 0 {
@@ -235,45 +243,81 @@ func (p *Proc) SetScanner(scanFunc func(stderr bool, text string)) {
 	p.scanner = &scanConfig{scanFunc: scanFunc}
 }
 
-func (p *Proc) scan() {
+func (p *Proc) scanAndWait() {
+
+	readLine := func(r *bufio.Reader, stderr bool) error {
+		text, err := r.ReadString('\n')
+		if err != nil {
+			return err
+		}
+
+		p.printMux.Lock()
+		if p.Print {
+			fmt.Fprintf(os.Stdout, "%s\n", text)
+		}
+		if p.scanner != nil {
+			p.scanner.scanFunc(stderr, text)
+		}
+		p.printMux.Unlock()
+
+		return nil
+	}
+
+	scanLoop := func(exited bool) {
+		stderrTo := make(chan bool)
+		stdoutTo := make(chan bool)
+
+		var t *time.Timer
+		if exited {
+			t = time.NewTimer(time.Second)
+		} else {
+			t = time.NewTimer(999999 * time.Hour) // infinite if not exited
+		}
+		stdoutReader := bufio.NewReader(p.StdoutReader)
+		stderrReader := bufio.NewReader(p.StderrReader)
+
+		readStdErrLine := func() {
+			readLine(stderrReader, true)
+			stderrTo <- true
+		}
+
+		readStdOutLine := func() {
+			readLine(stdoutReader, false)
+			stdoutTo <- true
+		}
+
+		go readStdErrLine()
+		go readStdOutLine()
+
+		for {
+			select {
+			case <-t.C:
+				return
+			case <-p.exited:
+				return
+			case <-stderrTo:
+				go readStdErrLine()
+			case <-stdoutTo:
+				go readStdOutLine()
+			}
+		}
+	}
 
 	go func() {
-		scanner := p.StdoutScannerLines()
-		if scanner == nil {
-			return
+		err := p.Cmd.Wait()
+		if err != nil {
+			p.Err = g.Error(err, p.CmdErrorText())
 		}
-		for scanner.Scan() {
-			p.printMux.Lock() // print one line at a time
-			text := scanner.Text()
-			p.Stdout.WriteString(text + "\n")
-			if p.Print {
-				fmt.Fprintf(os.Stdout, "%s\n", text)
-			}
-			if p.scanner != nil {
-				p.scanner.scanFunc(false, text)
-			}
-			p.printMux.Unlock()
-		}
+		close(p.exited)
 	}()
 
-	go func() {
-		scanner := p.StderrScannerLines()
-		if scanner == nil {
-			return
-		}
-		for scanner.Scan() {
-			p.printMux.Lock() // print one line at a time
-			text := scanner.Text()
-			p.Stderr.WriteString(text + "\n")
-			if p.Print {
-				fmt.Fprintf(os.Stderr, "%s\n", text)
-			}
-			if p.scanner != nil {
-				p.scanner.scanFunc(true, text)
-			}
-			p.printMux.Unlock()
-		}
-	}()
+	scanLoop(false)
+
+	<-p.exited
+
+	scanLoop(true) // drain remaining
+
+	close(p.Done)
 }
 
 // Run executes a command, prints output and waits for it to finish
@@ -284,14 +328,9 @@ func (p *Proc) Run(args ...string) (err error) {
 		return
 	}
 
-	err = p.Cmd.Wait()
+	err = p.Wait()
 	if err != nil {
-		err = g.Error(err, p.CmdErrorText())
-		return
-	}
-
-	if code := p.Cmd.ProcessState.ExitCode(); code != 0 {
-		err = g.Error("exit code = %d. %s", code, p.CmdErrorText())
+		return g.Error(err)
 	}
 
 	return
@@ -335,13 +374,13 @@ func (p *Proc) StderrScannerLines() (scanner *bufio.Scanner) {
 
 // Wait waits for the process to end
 func (p *Proc) Wait() error {
-	err := p.Cmd.Wait()
-	if err != nil {
-		return g.Error(err, p.CmdErrorText())
-	}
 
-	if code := p.Cmd.ProcessState.ExitCode(); code != 0 {
-		return g.Error("exit code = %d. %s", code, p.CmdErrorText())
+	<-p.Done
+	code := p.Cmd.ProcessState.ExitCode()
+	if p.Err != nil {
+		return g.Error(p.Err)
+	} else if code != 0 {
+		return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
 	}
 
 	return nil
