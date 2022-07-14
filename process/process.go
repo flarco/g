@@ -276,18 +276,24 @@ func (p *Proc) scanAndWait() {
 		stdoutReader := bufio.NewReader(p.StdoutReader)
 		stderrReader := bufio.NewReader(p.StderrReader)
 
-		readStdErrLine := func() {
-			readLine(stderrReader, true)
+		readStdErr := func() {
+			var err error
+			for err == nil {
+				err = readLine(stderrReader, true)
+			}
 			stderrTo <- true
 		}
 
-		readStdOutLine := func() {
-			readLine(stdoutReader, false)
+		readStdOut := func() {
+			var err error
+			for err == nil {
+				err = readLine(stdoutReader, false)
+			}
 			stdoutTo <- true
 		}
 
-		go readStdErrLine()
-		go readStdOutLine()
+		go readStdErr()
+		go readStdOut()
 
 		for {
 			select {
@@ -296,9 +302,9 @@ func (p *Proc) scanAndWait() {
 			case <-p.exited:
 				return
 			case <-stderrTo:
-				go readStdErrLine()
+				go readStdErr()
 			case <-stdoutTo:
-				go readStdOutLine()
+				go readStdOut()
 			}
 		}
 	}
