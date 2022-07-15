@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	g "github.com/flarco/g"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/samber/lo"
@@ -24,8 +25,9 @@ type Container struct {
 	ID           string
 	Err          error
 	Context      *g.Context
-	Done         <-chan container.ContainerWaitOKBody
-	killed       chan struct{} // process killed
+	DoneOK       <-chan container.ContainerWaitOKBody
+	DoneErr      <-chan error
+	exited       chan struct{} // process killed
 	StdoutReader io.ReadCloser
 	StderrReader io.ReadCloser
 	StdinWriter  io.Writer
@@ -168,27 +170,31 @@ func ContainerStart(ctx context.Context, opts *ContainerOptions) (c *Container, 
 		return
 	}
 
-	done, _ := client.ContainerWait(Context.Ctx, cont.ID, container.WaitConditionNotRunning)
+	doneOK, doneErr := client.ContainerWait(Context.Ctx, cont.ID, container.WaitConditionNotRunning)
 
 	// stats, _ := client.ContainerStats(opts.Ctx.Ctx, cont.ID, false)
+	// resp, err := client.ContainerAttach(Context.Ctx, cont.ID, types.ContainerAttachOptions{Stream: true, Stdout: true, Stderr: true})
+	// if err != nil {
+	// 	err = g.Error(err, "Unable to attach to container")
+	// 	return
+	// }
+	// logReader := resp.Reader
 
-	StdoutReader, err := client.ContainerLogs(Context.Ctx, cont.ID, types.ContainerLogsOptions{ShowStdout: true, Follow: true, Details: true})
-	g.LogError(err, "Unable to get container stdout logs")
+	logReader, err := client.ContainerLogs(Context.Ctx, cont.ID, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
+	g.LogError(err, "Unable to get container logs")
 
-	StderrReader, err := client.ContainerLogs(Context.Ctx, cont.ID, types.ContainerLogsOptions{
-		ShowStderr: true,
-		Follow:     true,
-		Details:    true,
-	})
-	g.LogError(err, "Unable to get container stderr logs")
+	stdoutR, stdoutW := io.Pipe()
+	stderrR, stderrW := io.Pipe()
+	go stdcopy.StdCopy(stdoutW, stderrW, logReader) // read log
 
 	c = &Container{
 		ID:           cont.ID,
 		Context:      &Context,
-		Done:         done,
-		killed:       make(chan struct{}),
-		StdoutReader: StdoutReader,
-		StderrReader: StderrReader,
+		DoneOK:       doneOK,
+		DoneErr:      doneErr,
+		exited:       make(chan struct{}),
+		StdoutReader: stdoutR,
+		StderrReader: stderrR,
 		Config:       config,
 		HostConfig:   hostConfig,
 		Options:      opts,
@@ -227,17 +233,45 @@ func (c *Container) GetCommandString() (cmd string) {
 	)
 }
 
+// IsAlive checks is container is part of the list from docker.
+// doneOK and doneErr don't always return, which is very strange
+func (c *Container) IsAlive() bool {
+	containers, _ := c.client.ContainerList(c.Context.Ctx, types.ContainerListOptions{All: true})
+	alive := false
+	for _, cont := range containers {
+		if cont.ID == c.ID && !strings.Contains(cont.Status, "Exit") {
+			alive = true
+		}
+	}
+	return alive
+}
+
 func (c *Container) Wait() (err error) {
+	// go func() {
+	// 	// check every second if container is alive.
+	// 	t := time.NewTicker(time.Second)
+	// 	for {
+	// 		<-t.C
+	// 		if !c.IsAlive() {
+	// 			close(c.exited)
+	// 			return
+	// 		}
+	// 	}
+	// }()
+
 	select {
-	case <-c.killed:
+	case <-c.exited:
 		err = c.Err
-	case done := <-c.Done:
+	case err = <-c.DoneErr:
+		c.Err = err
+		close(c.exited)
+	case done := <-c.DoneOK:
 		if done.Error != nil {
 			err = g.Error(done.Error.Message)
 		} else {
 			err = c.Err
 		}
-		close(c.killed)
+		close(c.exited)
 	}
 
 	return err
@@ -245,9 +279,11 @@ func (c *Container) Wait() (err error) {
 
 func (c *Container) listenCancel() {
 	select {
-	case <-c.Done:
+	case <-c.DoneOK:
 		return
-	case <-c.killed:
+	case <-c.DoneErr:
+		return
+	case <-c.exited:
 		return
 	case <-c.Context.Ctx.Done():
 	}
@@ -257,7 +293,9 @@ func (c *Container) listenCancel() {
 	go c.client.ContainerStop(context.Background(), c.ID, &to)
 
 	select {
-	case <-c.Done:
+	case <-c.DoneOK:
+		return
+	case <-c.DoneErr:
 		return
 	case <-time.NewTimer(to).C:
 		g.Debug("removing container %s", c.ID)
@@ -267,7 +305,7 @@ func (c *Container) listenCancel() {
 		}
 		go c.client.ContainerRemove(context.Background(), c.ID, removeOptions)
 		c.Err = g.Error("container was killed")
-		close(c.killed)
+		close(c.exited)
 	}
 }
 
@@ -280,11 +318,6 @@ func (c *Container) scanLoop() {
 	mux := sync.Mutex{}
 
 	readLine := func(r *bufio.Reader, stderr bool) error {
-		_, err := r.ReadString(' ') // with `Details: true`, until space is special character
-		if err != nil {
-			return err
-		}
-
 		text, err := r.ReadString('\n')
 		if err != nil {
 			return err
@@ -303,6 +336,7 @@ func (c *Container) scanLoop() {
 
 	stderrTo := make(chan bool)
 	stdoutTo := make(chan bool)
+
 	stdoutReader := bufio.NewReader(c.StdoutReader)
 	stderrReader := bufio.NewReader(c.StderrReader)
 
@@ -327,9 +361,11 @@ func (c *Container) scanLoop() {
 
 	for {
 		select {
-		case <-c.Done:
+		case <-c.DoneOK:
 			return
-		case <-c.killed:
+		case <-c.DoneErr:
+			return
+		case <-c.exited:
 			return
 		case <-stderrTo:
 			go readStdErr()
