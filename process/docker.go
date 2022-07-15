@@ -191,10 +191,6 @@ func ContainerStart(ctx context.Context, opts *ContainerOptions) (c *Container, 
 	go c.listenCancel()
 
 	go c.scanLoop()
-	// go func() {
-	// 	b, _ := ioutil.ReadAll(c.StdoutReader)
-	// 	g.Info(string(b))
-	// }()
 
 	return
 }
