@@ -17,6 +17,7 @@ import (
 	"github.com/docker/docker/client"
 	g "github.com/flarco/g"
 	specs "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/samber/lo"
 )
 
 type Container struct {
@@ -28,6 +29,8 @@ type Container struct {
 	StdoutReader io.ReadCloser
 	StderrReader io.ReadCloser
 	StdinWriter  io.Writer
+	Config       *container.Config
+	HostConfig   *container.HostConfig
 	Options      *ContainerOptions
 	client       *client.Client
 }
@@ -140,13 +143,16 @@ func ContainerStart(ctx context.Context, opts *ContainerOptions) (c *Container, 
 			Target: target, // path in docker
 		})
 	}
+
+	hostConfig := &container.HostConfig{
+		AutoRemove: true,
+		Mounts:     mounts,
+	}
+
 	cont, err := client.ContainerCreate(
 		Context.Ctx,
 		config,
-		&container.HostConfig{
-			AutoRemove: true,
-			Mounts:     mounts,
-		},
+		hostConfig,
 		&network.NetworkingConfig{},
 		&specs.Platform{},
 		"",
@@ -183,9 +189,13 @@ func ContainerStart(ctx context.Context, opts *ContainerOptions) (c *Container, 
 		killed:       make(chan struct{}),
 		StdoutReader: StdoutReader,
 		StderrReader: StderrReader,
+		Config:       config,
+		HostConfig:   hostConfig,
 		Options:      opts,
 		client:       client,
 	}
+
+	g.Trace("Docker command -> " + c.GetCommandString())
 
 	// listen for context cancel
 	go c.listenCancel()
@@ -193,6 +203,28 @@ func ContainerStart(ctx context.Context, opts *ContainerOptions) (c *Container, 
 	go c.scanLoop()
 
 	return
+}
+
+func (c *Container) GetCommandString() (cmd string) {
+	rm := lo.Ternary(c.HostConfig.AutoRemove, " --rm", "")
+	i := lo.Ternary(c.Config.OpenStdin, " -i", "")
+	w := lo.Ternary(c.Config.WorkingDir != "", " -w "+c.Config.WorkingDir, "")
+
+	mounts := []string{}
+	for _, m := range c.HostConfig.Mounts {
+		mounts = append(mounts, g.F("%s:%s", m.Source, m.Target))
+	}
+
+	template := "docker run{rm}{i}{v}{w} {image} {cmd}"
+	return g.R(
+		template,
+		"rm", rm,
+		"i", i,
+		"w", w,
+		"image", c.Config.Image,
+		"cmd", strings.Join(c.Config.Cmd, " "),
+		"v", lo.Ternary(len(mounts) > 0, " -v "+strings.Join(mounts, " -v "), ""),
+	)
 }
 
 func (c *Container) Wait() (err error) {
