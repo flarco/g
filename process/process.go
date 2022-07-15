@@ -3,6 +3,7 @@ package process
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	g "github.com/flarco/g"
@@ -24,7 +26,7 @@ type Session struct {
 	Workdir        string
 	Print          bool
 	Stderr, Stdout string
-	scanner        *scanConfig
+	scanner        *ScanConfig
 	mux            sync.Mutex
 }
 
@@ -43,13 +45,14 @@ type Proc struct {
 	StdinWriter                io.Writer
 	Pid                        int
 	Nice                       int
+	Context                    *g.Context
 	Done                       chan struct{} // finished with scanner
 	exited                     chan struct{} // process exited
-	scanner                    *scanConfig
+	scanner                    *ScanConfig
 	printMux                   sync.Mutex
 }
 
-type scanConfig struct {
+type ScanConfig struct {
 	scanFunc func(stderr bool, text string)
 }
 
@@ -71,7 +74,7 @@ func (s *Session) AddAlias(key, value string) {
 
 // SetScanner sets scanner with the provided function
 func (s *Session) SetScanner(scanFunc func(stderr bool, text string)) {
-	s.scanner = &scanConfig{scanFunc: scanFunc}
+	s.scanner = &ScanConfig{scanFunc: scanFunc}
 }
 
 // Run runs a command
@@ -194,6 +197,11 @@ func (p *Proc) Start(args ...string) (err error) {
 		p.SetArgs(args...)
 	}
 
+	if p.Context == nil {
+		context := g.NewContext(context.Background())
+		p.Context = &context
+	}
+
 	// reset channels
 	p.Done = make(chan struct{})
 	p.exited = make(chan struct{})
@@ -235,12 +243,32 @@ func (p *Proc) Start(args ...string) (err error) {
 		niceCmd.Run()
 	}
 
+	// listen for context cancel
+	go func() {
+		select {
+		case <-p.Done:
+			return
+		case <-p.Context.Ctx.Done():
+		}
+
+		g.Debug("interrupting sub-process %d", p.Cmd.Process.Pid)
+		p.Cmd.Process.Signal(syscall.SIGINT)
+		t := time.NewTimer(5 * time.Second)
+		select {
+		case <-p.Done:
+			return
+		case <-t.C:
+			g.Debug("killing sub-process %d", p.Cmd.Process.Pid)
+			g.LogError(p.Cmd.Process.Kill())
+		}
+	}()
+
 	return
 }
 
 // SetScanner sets scanner with the provided function
 func (p *Proc) SetScanner(scanFunc func(stderr bool, text string)) {
-	p.scanner = &scanConfig{scanFunc: scanFunc}
+	p.scanner = &ScanConfig{scanFunc: scanFunc}
 }
 
 func (p *Proc) scanAndWait() {
