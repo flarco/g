@@ -601,3 +601,30 @@ func JSONUnmarshal(b []byte, p interface{}) error {
 	}
 	return err
 }
+
+func IsMatched(filters []string, name string) bool {
+	name = strings.ToLower(name)
+	for _, filter := range filters {
+		filter = strings.ToLower(filter)
+		if filter == "" {
+			continue
+		}
+		if strings.HasSuffix(filter, "*") &&
+			strings.HasPrefix(name, strings.TrimSuffix(filter, "*")) {
+			return true
+		}
+		if strings.HasPrefix(filter, "*") &&
+			strings.HasSuffix(name, strings.TrimPrefix(filter, "*")) {
+			return true
+		}
+		if strings.HasSuffix(filter, "*") &&
+			strings.HasPrefix(filter, "*") &&
+			strings.Contains(name, strings.TrimPrefix(strings.TrimSuffix(filter, "*"), "*")) {
+			return true
+		}
+		if filter == name {
+			return true
+		}
+	}
+	return false
+}
