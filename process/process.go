@@ -282,7 +282,11 @@ func (p *Proc) scanAndWait() {
 
 		p.printMux.Lock()
 		if p.Print {
-			fmt.Fprintf(os.Stdout, "%s\n", text)
+			if stderr {
+				fmt.Fprintf(os.Stderr, "%s\n", text)
+			} else {
+				fmt.Fprintf(os.Stdout, "%s\n", text)
+			}
 		}
 		if p.scanner != nil {
 			p.scanner.scanFunc(stderr, text)
