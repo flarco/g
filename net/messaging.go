@@ -146,7 +146,7 @@ func NewMessageErr(err error, orgReqID ...string) Message {
 	if !ok {
 		E = g.NewError(3, err).(*g.ErrType)
 	}
-	msg.Error = E.Full()
+	msg.Error = g.Marshal(E)
 	msg.Data["error_debug"] = E.Debug()
 	return msg
 }
