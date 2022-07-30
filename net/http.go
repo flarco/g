@@ -29,8 +29,8 @@ func DownloadFile(url string, filepath string) (err error) {
 	defer resp.Body.Close()
 
 	// Check server response
-	if resp.StatusCode != http.StatusOK {
-		return g.Error(err, g.F("Bad Status '%s' from URL %s", resp.Status, url))
+	if resp.StatusCode >= 400 {
+		return g.Error("Bad Status '%s' from URL %s", resp.Status, url)
 	}
 
 	// Writer the body to file
