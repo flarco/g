@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/jaypipes/ghw"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/disk"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/shirou/gopsutil/net"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cast"
 )
 
@@ -129,11 +129,11 @@ func GetProcStats(pid int) ProcStats {
 		stats.RamRss = ramInfo.RSS
 	}
 
-	netInfo, err := proc.NetIOCounters(false)
-	if err == nil {
-		stats.TxBytes = cast.ToUint64(netInfo[0].BytesSent)
-		stats.RcBytes = cast.ToUint64(netInfo[0].BytesRecv)
-	}
+	// netInfo, err := proc.NetIOCounters(false)
+	// if err == nil {
+	// 	stats.TxBytes = cast.ToUint64(netInfo[0].BytesSent)
+	// 	stats.RcBytes = cast.ToUint64(netInfo[0].BytesRecv)
+	// }
 
 	diskInfo, err := proc.IOCounters()
 	if err == nil {
