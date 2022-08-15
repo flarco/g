@@ -22,7 +22,8 @@ import (
 )
 
 var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
+	json           = jsoniter.ConfigCompatibleWithStandardLibrary
+	nonWordPattern = regexp.MustCompile(`\W+`)
 )
 
 const (
@@ -259,6 +260,11 @@ func WildCardMatch(whole string, pattens []string) bool {
 		}
 	}
 	return false
+}
+
+// ReplaceNonWord replaces characters not: [^a-zA-Z0-9_]
+func ReplaceNonWord(in, replaceWith string) (out string) {
+	return string(nonWordPattern.ReplaceAll([]byte(in), []byte(replaceWith)))
 }
 
 // PrintT prints the type of object
