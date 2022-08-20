@@ -47,6 +47,15 @@ func (u *URL) Hostname() string {
 	return u.U.Hostname()
 }
 
+// Query returns the query as a map
+func (u *URL) Query() map[string]string {
+	m := map[string]string{}
+	for k, arr := range u.U.Query() {
+		m[k] = arr[0]
+	}
+	return m
+}
+
 // Username returns the Username
 func (u *URL) Username() string {
 	return u.U.User.Username()
