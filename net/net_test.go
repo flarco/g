@@ -4,7 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alecthomas/assert"
+	"github.com/flarco/g"
+	"github.com/stretchr/testify/assert"
 )
 
 var htmltext = `<!DOCTYPE html>
@@ -37,4 +38,20 @@ func TestEmail(t *testing.T) {
 	}
 	err := s.Send(m)
 	assert.NoError(t, err)
+}
+func TestURL(t *testing.T) {
+	urlStr := "s3://ocral/LargeDataset.csv.gz"
+	u, err := NewURL(urlStr)
+	if !assert.NoError(t, err) {
+		return
+	}
+
+	assert.Equal(t, "ocral", u.Hostname())
+	assert.Equal(t, "/LargeDataset.csv.gz", u.Path())
+
+	urlStr = "file:///gaf"
+
+	u, err = NewURL(urlStr)
+	g.Info(u.Hostname())
+	g.Info(u.Path())
 }
