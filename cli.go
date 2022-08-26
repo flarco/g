@@ -13,20 +13,22 @@ var AllScs = []*CliSC{}
 
 // CliSC represents a CLI subcommand
 type CliSC struct {
-	Name        string
-	Description string
-	Singular    string
-	Sc          *flaggy.Subcommand
-	Vals        map[string]interface{}
-	PosFlags    []Flag
-	Flags       []Flag
-	CrudFlags   []Flag
-	ExecProcess func(c *CliSC) (bool, error)
-	SubComs     []*CliSC
-	CrudOps     []string
-	CrudPK      []string
-	InclAccID   bool
-	parentSc    *CliSC
+	Name                  string
+	Description           string
+	AdditionalHelpPrepend string
+	AdditionalHelpAppend  string
+	Singular              string
+	Sc                    *flaggy.Subcommand
+	Vals                  map[string]interface{}
+	PosFlags              []Flag
+	Flags                 []Flag
+	CrudFlags             []Flag
+	ExecProcess           func(c *CliSC) (bool, error)
+	SubComs               []*CliSC
+	CrudOps               []string
+	CrudPK                []string
+	InclAccID             bool
+	parentSc              *CliSC
 }
 
 // Flag represents a CLI Flag
@@ -47,6 +49,8 @@ func (c *CliSC) Add() *CliSC {
 func (c *CliSC) Make() *CliSC {
 	c.Sc = flaggy.NewSubcommand(c.Name)
 	c.Sc.Description = c.Description
+	c.Sc.AdditionalHelpPrepend = c.AdditionalHelpPrepend
+	c.Sc.AdditionalHelpAppend = c.AdditionalHelpAppend
 	AllScs = append(AllScs, c)
 
 	c.Vals = map[string]interface{}{}
