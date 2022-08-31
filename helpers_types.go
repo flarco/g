@@ -3,6 +3,7 @@ package g
 import (
 	"context"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -26,11 +27,9 @@ type SizedWaitGroup struct {
 	Limit int
 }
 
-const defaultConcurencyLimit = 10
-
 // NewContext creates a new context
 func NewContext(parentCtx context.Context, concurencyLimits ...int) Context {
-	concurencyLimit := defaultConcurencyLimit
+	concurencyLimit := runtime.NumCPU()
 	if len(concurencyLimits) > 0 {
 		concurencyLimit = concurencyLimits[0]
 	} else if os.Getenv("CONCURENCY_LIMIT") != "" {
