@@ -1,9 +1,8 @@
 module github.com/flarco/g
 
-go 1.18
+go 1.19
 
 require (
-	github.com/alecthomas/assert v0.0.0-20170929043011-405dbfeb8e38
 	github.com/allegro/bigcache/v2 v2.2.4
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/fatih/color v1.9.0
@@ -29,8 +28,6 @@ require (
 require (
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
-	github.com/alecthomas/colour v0.1.0 // indirect
-	github.com/alecthomas/repr v0.0.0-20201006074542-804e374aceb1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -56,7 +53,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
