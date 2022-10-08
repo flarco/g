@@ -1,6 +1,7 @@
 package g
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"testing"
@@ -212,5 +213,14 @@ func BenchmarkAsMap(b *testing.B) {
 	m := map[string]interface{}{"1": 1}
 	for i := 0; i < b.N; i++ {
 		AsMap(m)
+	}
+}
+
+// go test -bench=. -run '^BenchmarkMux'
+func BenchmarkMux(b *testing.B) {
+	c := NewContext(context.Background())
+	for i := 0; i < b.N; i++ {
+		c.Lock()
+		c.Unlock()
 	}
 }
