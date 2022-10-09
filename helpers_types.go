@@ -75,6 +75,9 @@ func (c *Context) MemBasedLimit(percentLimit int) {
 // and cancels the context
 func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 	if E != nil {
+		if GetLogLevel() == TraceLevel {
+			LogError(E)
+		}
 		E = NewError(3, E, args...)
 		c.Cancel() // cancel context
 	}
