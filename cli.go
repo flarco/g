@@ -10,6 +10,7 @@ import (
 // CliArr is the array of CliSC
 var CliArr = []*CliSC{}
 var AllScs = []*CliSC{}
+var CliObj = &CliSC{}
 
 // CliSC represents a CLI subcommand
 type CliSC struct {
@@ -265,6 +266,7 @@ func CliProcess() (bool, error) {
 				}
 			}
 
+			CliObj = cObj
 			ok, err := cObj.ExecProcess(cObj)
 			if err != nil {
 				err = Error(err)
