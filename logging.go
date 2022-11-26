@@ -251,6 +251,15 @@ func Debug(text string, args ...interface{}) {
 	doLog(LogErr.Debug(), text, args)
 }
 
+// DebugLow : print text in debug low level
+func DebugLow(text string, args ...interface{}) {
+	if IsDebugLow() {
+		args = addCaller(args)
+		doHooks(zerolog.DebugLevel, text, args)
+		doLog(LogErr.Debug(), text, args)
+	}
+}
+
 // Info : print text in info level
 func Info(text string, args ...interface{}) {
 	doHooks(zerolog.InfoLevel, text, args)
