@@ -312,12 +312,7 @@ func (c *Cache) HGetAll(hash string) (m map[string]string, err error) {
 		return
 	}
 
-	ms, _ := status.Result()
-	for k, v := range ms {
-		val := ""
-		g.Unmarshal(v, &val)
-		m[k] = val
-	}
+	m, _ = status.Result()
 
 	return
 }

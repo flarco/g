@@ -38,11 +38,14 @@ func TestCache(t *testing.T) {
 	err = c.Get(key, &val2)
 	assert.Error(t, err)
 
-	m := g.M("k1", "val", "k2", "val2")
+	m := g.M("k1", "val", "k2", "val2", "k4", g.M("foo", "bar", "zip", 9, "now", time.Now()))
 	err = c.HSetAll("testhash", m)
 	assert.NoError(t, err)
 
 	err = c.HSet("testhash", "k3", "val3")
+	assert.NoError(t, err)
+
+	err = c.HSet("testhash", "k5", "val5")
 	assert.NoError(t, err)
 
 	found := c.HHas("testhash", "k1")
@@ -72,7 +75,7 @@ func TestCache(t *testing.T) {
 
 	keys, err := c.HKeys("testhash")
 	assert.NoError(t, err)
-	assert.Len(t, keys, 2)
+	assert.Len(t, keys, 4)
 
 	err = c.HDel("testhash", "k1", "k3")
 	assert.NoError(t, err)
