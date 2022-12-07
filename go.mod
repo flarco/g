@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/go-redis/redis/v8 v8.8.0
 	github.com/go-redsync/redsync/v4 v4.1.0
-	github.com/integrii/flaggy v1.4.4
+	github.com/integrii/flaggy v1.5.2
 	github.com/jaypipes/ghw v0.6.1
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/json-iterator/go v1.1.12
