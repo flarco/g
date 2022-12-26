@@ -226,7 +226,7 @@ func ErrContains(e error, subStr string) bool {
 	return strings.Contains(e.Error(), subStr)
 }
 
-//ErrMsg returns a simple error message
+// ErrMsg returns a simple error message
 func ErrMsg(e error) string {
 	if e == nil {
 		return ""
@@ -323,7 +323,7 @@ func (e *ErrorGroup) Err() error {
 	return fmt.Errorf(strings.Join(errstrings, "\n"))
 }
 
-// ErrJSON returns to the echo.Context a formatted
+// ErrJSON returns to the echo.Context as JSON formatted
 func ErrJSON(HTTPStatus int, err error, args ...interface{}) error {
 	msg := ArgsErrMsg(args...)
 	LogError(err)
