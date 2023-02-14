@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 
@@ -312,15 +313,20 @@ func (e *ErrorGroup) Err() error {
 		return nil
 	}
 
-	errstrings := []string{}
+	errstrings := map[string]struct{}{}
 	for _, err := range e.Errors {
 		if err2, ok := err.(*ErrType); ok && IsDebugLow() {
-			errstrings = append(errstrings, err2.Debug())
+			errstrings[err2.Debug()] = struct{}{}
 		} else {
-			errstrings = append(errstrings, err.Error())
+			errstrings[err.Error()] = struct{}{}
 		}
 	}
-	return fmt.Errorf(strings.Join(errstrings, "\n"))
+	errstringsArr := []string{}
+	for k := range errstrings {
+		errstringsArr = append(errstringsArr, k)
+	}
+	sort.Strings(errstringsArr)
+	return fmt.Errorf(strings.Join(errstringsArr, "\n\n"))
 }
 
 // ErrJSON returns to the echo.Context as JSON formatted
