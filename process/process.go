@@ -43,6 +43,7 @@ type Proc struct {
 	Stderr, Stdout, Combined   bytes.Buffer
 	StderrReader, StdoutReader io.Reader
 	StdinWriter                io.Writer
+	StdinOverride              io.Reader
 	Pid                        int
 	Nice                       int
 	Context                    *g.Context
@@ -222,9 +223,14 @@ func (p *Proc) Start(args ...string) (err error) {
 	if err != nil {
 		return g.Error(err)
 	}
-	p.StdinWriter, err = p.Cmd.StdinPipe()
-	if err != nil {
-		return g.Error(err)
+
+	if p.StdinOverride != nil {
+		p.Cmd.Stdin = p.StdinOverride
+	} else {
+		p.StdinWriter, err = p.Cmd.StdinPipe()
+		if err != nil {
+			return g.Error(err)
+		}
 	}
 
 	g.Trace("Proc command -> %s", p.CmdStr())
