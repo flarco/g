@@ -510,7 +510,7 @@ func ArrContains(items []string, subItem string) bool {
 // PathExists returns true if path exists
 func PathExists(path string) bool {
 	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
+	return err == nil
 }
 
 // In returns true if `item` matches a value in `potMatches`
