@@ -38,6 +38,7 @@ type Flag struct {
 	ShortName   string
 	Name        string
 	Description string
+	Required    bool
 }
 
 // Add adds to the main CLI array
@@ -235,7 +236,14 @@ func CliProcess() (bool, error) {
 				}
 			}
 
-			if allBlanks(cObj.Vals) {
+			requiredFlag := 0
+			for _, f := range cObj.Flags {
+				if f.Required {
+					requiredFlag++
+				}
+			}
+
+			if requiredFlag > 0 && allBlanks(cObj.Vals) {
 				return false, nil
 			}
 
