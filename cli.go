@@ -29,6 +29,7 @@ type CliSC struct {
 	CrudOps               []string
 	CrudPK                []string
 	InclAccID             bool
+	ExecuteWithoutFlags   bool
 	parentSc              *CliSC
 }
 
@@ -243,10 +244,12 @@ func CliProcess() (bool, error) {
 				}
 			}
 
-			if requiredFlag > 0 && allBlanks(cObj.Vals) {
-				return false, nil
-			} else if len(cObj.Flags) > 0 && allBlanks(cObj.Vals) {
-				return false, nil
+			if !cObj.ExecuteWithoutFlags {
+				if requiredFlag > 0 && allBlanks(cObj.Vals) {
+					return false, nil
+				} else if len(cObj.Flags) > 0 && allBlanks(cObj.Vals) {
+					return false, nil
+				}
 			}
 
 			// delete blanks, prepare values
