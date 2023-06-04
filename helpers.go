@@ -654,3 +654,41 @@ func Int64(v int64) *int64 {
 func Bool(v bool) *bool {
 	return &v
 }
+
+// CompareVersions uses integers for each part to compare
+// when comparing strings, 'v0.0.40' > 'v0.0.5' = False
+// when it should be True.
+func CompareVersions(current, latest string) (isNew bool, err error) {
+	current = strings.Replace(current, "v", "", 1)
+	latest = strings.Replace(latest, "v", "", 1)
+
+	currentArr := strings.Split(current, ".")
+	latestArr := strings.Split(latest, ".")
+
+	if len(currentArr) != len(latestArr) {
+		return false, Error("incompatible version structures. `%s` vs `%s`", current, latest)
+	}
+
+	for i := 0; i < len(currentArr); i++ {
+		currentVal, err := cast.ToIntE(currentArr[i])
+		if err != nil {
+			return false, Error(err, "unable to convert parts to integer: %s", current)
+		}
+
+		latestVal, err := cast.ToIntE(latestArr[i])
+		if err != nil {
+			return false, Error(err, "unable to convert parts to integer: %s", latest)
+		}
+
+		switch {
+		case latestVal == currentVal:
+			continue
+		case latestVal > currentVal:
+			return true, nil
+		case latestVal < currentVal:
+			return false, nil
+		}
+	}
+
+	return false, nil
+}

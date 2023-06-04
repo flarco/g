@@ -116,6 +116,23 @@ func TestHash(t *testing.T) {
 	println(hash)
 }
 
+func TestCompareVersion(t *testing.T) {
+	isNew, err := CompareVersions("v0.0.5", "v0.0.40")
+	assert.True(t, isNew)
+	assert.NoError(t, err)
+	isNew, err = CompareVersions("v0.0.5", "v0.0.12")
+	assert.True(t, isNew)
+	assert.NoError(t, err)
+	isNew, err = CompareVersions("v1.0.5", "v0.0.40")
+	assert.False(t, isNew)
+	assert.NoError(t, err)
+	isNew, err = CompareVersions("v1.0.5", "v0.9.40")
+	assert.False(t, isNew)
+	assert.NoError(t, err)
+	_, err = CompareVersions("v0.0f.5", "v0.0.40")
+	assert.Error(t, err)
+}
+
 func TestVerify(t *testing.T) {
 	hash, err := Hash("hello")
 	assert.Nil(t, err)
