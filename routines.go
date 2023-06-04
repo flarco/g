@@ -1,7 +1,6 @@
 package g
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -9,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jaypipes/ghw"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -142,16 +140,6 @@ func GetProcStats(pid int) ProcStats {
 	}
 
 	return stats
-}
-
-// GetMachineInfo obtains host information
-func GetMachineInfo() {
-	product, err := ghw.Product()
-	if err != nil {
-		fmt.Printf("Error getting product info: %v", err)
-	}
-
-	fmt.Printf("%v\n", product)
 }
 
 type (
