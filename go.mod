@@ -10,12 +10,9 @@ require (
 	github.com/go-redsync/redsync/v4 v4.1.0
 	github.com/integrii/flaggy v1.5.2
 	github.com/jaypipes/ghw v0.6.1
-	github.com/jmoiron/sqlx v1.2.0
 	github.com/json-iterator/go v1.1.12
 	github.com/labstack/echo/v4 v4.1.17
-	github.com/lib/pq v1.0.0
 	github.com/opencontainers/image-spec v1.0.2
-	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
 	github.com/rs/zerolog v1.20.0
 	github.com/samber/lo v1.25.0
 	github.com/shirou/gopsutil/v3 v3.22.7
@@ -67,7 +64,6 @@ require (
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/time v0.0.0-20220609170525-579cf78fd858 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
