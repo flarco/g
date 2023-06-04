@@ -2,13 +2,13 @@ package g
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
@@ -338,5 +338,41 @@ func ErrJSON(HTTPStatus int, err error, args ...interface{}) error {
 	} else if ErrMsg(err) != "" {
 		msg = F("%s [%s]", msg, ErrMsg(err))
 	}
-	return echo.NewHTTPError(HTTPStatus, M("error", msg))
+	return NewHTTPError(HTTPStatus, M("error", msg))
+}
+
+// /////////////////////////// From Echo LabStack /////////////////////////////
+
+type HTTPError struct {
+	Code     int         `json:"-"`
+	Message  interface{} `json:"message"`
+	Internal error       `json:"-"` // Stores the error returned by an external dependency
+}
+
+// Error makes it compatible with `error` interface.
+func (he *HTTPError) Error() string {
+	if he.Internal == nil {
+		return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
+	}
+	return fmt.Sprintf("code=%d, message=%v, internal=%v", he.Code, he.Message, he.Internal)
+}
+
+// SetInternal sets error to HTTPError.Internal
+func (he *HTTPError) SetInternal(err error) *HTTPError {
+	he.Internal = err
+	return he
+}
+
+// Unwrap satisfies the Go 1.13 error wrapper interface.
+func (he *HTTPError) Unwrap() error {
+	return he.Internal
+}
+
+// NewHTTPError creates a new HTTPError instance.
+func NewHTTPError(code int, message ...interface{}) *HTTPError {
+	he := &HTTPError{Code: code, Message: http.StatusText(code)}
+	if len(message) > 0 {
+		he.Message = message[0]
+	}
+	return he
 }
