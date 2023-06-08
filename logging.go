@@ -106,7 +106,12 @@ func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
 
 // GetLogLevel gets the g log level
 func GetLogLevel() Level {
+	// legacy setting
 	if val := os.Getenv("_DEBUG"); val != "" {
+		os.Setenv("DEBUG", val)
+	}
+
+	if val := os.Getenv("DEBUG"); val != "" {
 		switch val {
 		case "TRACE":
 			SetZeroLogLevel(zerolog.TraceLevel)
