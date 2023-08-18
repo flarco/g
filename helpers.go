@@ -19,6 +19,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cast"
+	"gopkg.in/myesui/uuid.v1"
 )
 
 var (
@@ -563,6 +564,14 @@ func ExecuteTemplate(text string, values map[string]interface{}) (out string, er
 func MD5(text ...string) string {
 	hash := md5.Sum([]byte(strings.Join(text, "")))
 	return hex.EncodeToString(hash[:])
+}
+
+func UUID4() string {
+	return uuid.NewV4().String()
+}
+
+func UUID5(namespace, s string) string {
+	return uuid.NewV5(uuid.NewHex(namespace), s).String()
 }
 
 // JSONConvert converts from an interface to another via JSON

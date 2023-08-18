@@ -19,6 +19,7 @@ type Context struct {
 	Wg       SizedWaitGroup
 	Mux      *sync.Mutex
 	LockChn  chan struct{}
+	MsgChan  chan map[string]any
 }
 
 // SizedWaitGroup with separate wait groups for read & write
@@ -42,7 +43,7 @@ func NewContext(parentCtx context.Context, concurencyLimits ...int) Context {
 		Read:  sizedwaitgroup.New(concurencyLimit),
 		Write: sizedwaitgroup.New(concurencyLimit),
 	}
-	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{})}
+	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any)}
 }
 
 // SetConcurencyLimit sets the concurency limit
