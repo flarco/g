@@ -78,6 +78,17 @@ func (u *URL) AddParam(key, value string) *URL {
 	return u
 }
 
+// SetParam sets a query parameter
+func (u *URL) SetParam(key, value string) *URL {
+	if u.U == nil {
+		return u
+	}
+	q := u.U.Query()
+	q.Set(key, value)
+	u.U.RawQuery = q.Encode()
+	return u
+}
+
 // GetParam extracts/removes a query parameter
 func (u *URL) GetParam(key string) string {
 	if u.U == nil {

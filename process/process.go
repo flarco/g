@@ -209,7 +209,9 @@ func (p *Proc) Start(args ...string) (err error) {
 
 	p.Cmd = exec.Command(p.Bin, p.Args...)
 	p.Cmd.Dir = p.Workdir
-	p.Cmd.Env = g.MapToKVArr(p.Env)
+	if p.Env != nil {
+		p.Cmd.Env = g.MapToKVArr(p.Env)
+	}
 
 	p.Stdout.Reset()
 	p.Stderr.Reset()
