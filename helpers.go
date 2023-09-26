@@ -272,7 +272,7 @@ func ReplaceNonWord(in, replaceWith string) (out string) {
 func PrintT(v interface{}) {
 	if IsDebugLow() {
 		args := addCaller([]interface{}{})
-		doLog(LogErr.Debug(), F("%T", v), args)
+		doLog(ZLogErr.Debug(), F("%T", v), args)
 	}
 }
 

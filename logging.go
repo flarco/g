@@ -33,11 +33,11 @@ var LogHooks = []*LogHook{}
 // LogLevel is the log level
 var LogLevel = new(Level)
 
-// LogOut is the non-error/normal logger
-var LogOut = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
+// ZLogOut is the non-error/normal logger
+var ZLogOut = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
 
-// LogErr is the error/debug logger
-var LogErr = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
+// ZLogErr is the error/debug logger
+var ZLogErr = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
 
 // CallerLevel is the stack caller information level
 var CallerLevel = 0
@@ -129,8 +129,8 @@ func GetLogLevel() Level {
 
 // SetZeroLogHook sets a zero log hook
 func SetZeroLogHook(h zerolog.Hook) {
-	LogOut = LogOut.Hook(h)
-	LogErr = LogErr.Hook(h)
+	ZLogOut = ZLogOut.Hook(h)
+	ZLogErr = ZLogErr.Hook(h)
 }
 
 // SetLogHook sets a log hook
@@ -151,7 +151,7 @@ func disableColor() bool {
 func PP(v interface{}) {
 	if IsDebugLow() {
 		args := addCaller([]interface{}{})
-		doLog(LogErr.Debug(), Pretty(v), args)
+		doLog(ZLogErr.Debug(), Pretty(v), args)
 	}
 }
 
@@ -165,7 +165,7 @@ func Pretty(v interface{}) string {
 func P(v interface{}) {
 	if IsDebugLow() {
 		args := addCaller([]interface{}{})
-		doLog(LogErr.Debug(), F("%#v", v), args)
+		doLog(ZLogErr.Debug(), F("%#v", v), args)
 	}
 }
 
@@ -189,8 +189,8 @@ func extractLogMapArgs(args []interface{}, localLog *zerolog.Event) []interface{
 
 // Log : print text
 func Log(text string, args ...interface{}) {
-	localLogDbg := LogErr.Debug()
-	localLogInf := LogOut.Info()
+	localLogDbg := ZLogErr.Debug()
+	localLogInf := ZLogOut.Info()
 	extractLogMapArgs(args, localLogDbg)
 	args = extractLogMapArgs(args, localLogInf)
 	text = F(text, args...)
@@ -253,7 +253,7 @@ func addCaller(args []interface{}) []interface{} {
 func Debug(text string, args ...interface{}) {
 	args = addCaller(args)
 	doHooks(zerolog.DebugLevel, text, args)
-	doLog(LogErr.Debug(), text, args)
+	doLog(ZLogErr.Debug(), text, args)
 }
 
 // DebugLow : print text in debug low level
@@ -261,7 +261,7 @@ func DebugLow(text string, args ...interface{}) {
 	if IsDebugLow() {
 		args = addCaller(args)
 		doHooks(zerolog.DebugLevel, text, args)
-		doLog(LogErr.Debug(), text, args)
+		doLog(ZLogErr.Debug(), text, args)
 	}
 }
 
@@ -269,9 +269,9 @@ func DebugLow(text string, args ...interface{}) {
 func Info(text string, args ...interface{}) {
 	doHooks(zerolog.InfoLevel, text, args)
 	if IsTask() {
-		doLog(LogOut.Info(), text, args)
+		doLog(ZLogOut.Info(), text, args)
 	} else {
-		doLog(LogErr.Info(), text, args)
+		doLog(ZLogErr.Info(), text, args)
 	}
 }
 
@@ -370,16 +370,16 @@ func LogFatal(E error, args ...interface{}) {
 func Trace(text string, args ...interface{}) {
 	args = addCaller(args)
 	doHooks(zerolog.TraceLevel, text, args)
-	doLog(LogErr.Trace(), text, args)
+	doLog(ZLogErr.Trace(), text, args)
 }
 
 // Warn : print text in warning level
 func Warn(text string, args ...interface{}) {
 	doHooks(zerolog.WarnLevel, text, args)
 	if IsTask() {
-		doLog(LogOut.Warn(), text, args)
+		doLog(ZLogOut.Warn(), text, args)
 	} else {
-		doLog(LogErr.Warn(), text, args)
+		doLog(ZLogErr.Warn(), text, args)
 	}
 }
 

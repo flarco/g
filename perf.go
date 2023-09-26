@@ -44,7 +44,7 @@ func (tm *TickMeasure) Tick() time.Time {
 		tm.deltaString(total),
 		M("caller", caller),
 	}
-	doLog(LogErr.Debug(), "delta = %s | whole = %s", args)
+	doLog(ZLogErr.Debug(), "delta = %s | whole = %s", args)
 
 	tm.time = now
 	return now

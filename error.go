@@ -195,12 +195,12 @@ func LogError(E error, args ...interface{}) bool {
 		}
 		doHooks(zerolog.DebugLevel, err.Error(), args)
 		if IsTask() {
-			LogOut.Err(err.OriginalError()).Msg(msg) // simple message in STDOUT
-			LogErr.Err(err.DebugError()).Msg(msg)
+			ZLogOut.Err(err.OriginalError()).Msg(msg) // simple message in STDOUT
+			ZLogErr.Err(err.DebugError()).Msg(msg)
 		} else if IsDebugLow() {
-			LogErr.Err(err.DebugError()).Msg(msg)
+			ZLogErr.Err(err.DebugError()).Msg(msg)
 		} else {
-			LogErr.Err(err.OriginalError()).Msg(msg) // detailed error in STDERR
+			ZLogErr.Err(err.OriginalError()).Msg(msg) // detailed error in STDERR
 		}
 		return true
 	}
