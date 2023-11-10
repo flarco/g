@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"math"
 	"net"
 	"os"
 	"reflect"
@@ -700,4 +701,20 @@ func CompareVersions(current, latest string) (isNew bool, err error) {
 	}
 
 	return false, nil
+}
+
+func DurationString(duration time.Duration) (d string) {
+	secs := cast.ToInt(math.Floor(duration.Seconds()))
+	mins := cast.ToInt(math.Floor(duration.Minutes()))
+	hours := cast.ToInt(math.Floor(duration.Hours()))
+
+	if secs < 60 {
+		return F("%d secs", secs)
+	}
+
+	if hours < 60 {
+		return F("%dm %ds", mins, secs)
+	}
+
+	return F("%dh %dm", hours, mins)
 }
