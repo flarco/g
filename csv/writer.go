@@ -38,7 +38,7 @@ type Writer struct {
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
 		Comma: ',',
-		w:     bufio.NewWriter(w),
+		w:     bufio.NewWriterSize(w, 40960),
 		bytes: 0,
 	}
 }
