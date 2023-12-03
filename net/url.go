@@ -2,6 +2,7 @@ package net
 
 import (
 	"net/url"
+	"strings"
 
 	"github.com/flarco/g"
 	"github.com/spf13/cast"
@@ -15,6 +16,10 @@ type URL struct {
 
 // NewURL creates a new URL instance
 func NewURL(urlStr string) (*URL, error) {
+	if strings.Contains(urlStr, `:\`) {
+		urlStr = strings.ReplaceAll(urlStr, `\`, `/`) // windows path fix
+	}
+
 	u, err := url.Parse(urlStr)
 	if err != nil {
 		err = g.Error(err, "invalid URL")
