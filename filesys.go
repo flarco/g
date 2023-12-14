@@ -9,13 +9,13 @@ import (
 
 // FileItem represents a file or a directory
 type FileItem struct {
-	Name       string
-	RelPath    string // relative path
-	FullPath   string
-	ParentPath string
-	IsDir      bool
-	ModTs      int64
-	Size       int64
+	Name       string `json:"name"`
+	RelPath    string `json:"rel_path"` // relative path
+	FullPath   string `json:"full_path"`
+	ParentPath string `json:"parent_path"`
+	IsDir      bool   `json:"is_dir"`
+	ModTs      int64  `json:"mod_ts"`
+	Size       int64  `json:"size"`
 }
 
 // ListDir lists the file in given directory path recursively
