@@ -665,6 +665,11 @@ func Bool(v bool) *bool {
 	return &v
 }
 
+// Time returns a pointer to the time value passed in.
+func Time(v time.Time) *time.Time {
+	return &v
+}
+
 // CompareVersions uses integers for each part to compare
 // when comparing strings, 'v0.0.40' > 'v0.0.5' = False
 // when it should be True.
