@@ -2,7 +2,7 @@ package g
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -72,7 +72,7 @@ func lokiSendBatch(URL string, batch lokiBatch) {
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		respBytes, _ := ioutil.ReadAll(resp.Body)
+		respBytes, _ := io.ReadAll(resp.Body)
 		if IsDebugLow() {
 			println(fmt.Errorf("Unexpected Response %d: %s : %s => %s", resp.StatusCode, resp.Status, string(respBytes), str).Error())
 		}

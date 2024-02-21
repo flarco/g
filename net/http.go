@@ -3,7 +3,6 @@ package net
 import (
 	"bufio"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -64,7 +63,7 @@ func ClientDoStream(method, URL string, body io.Reader, headers map[string]strin
 	}
 
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		respBytes, _ := ioutil.ReadAll(resp.Body)
+		respBytes, _ := io.ReadAll(resp.Body)
 		err = g.Error("Unexpected Response %d: %s. %s", resp.StatusCode, resp.Status, string(respBytes))
 		return
 	}
@@ -82,7 +81,6 @@ func ClientDo(method, URL string, body io.Reader, headers map[string]string, tim
 		to = time.Duration(timeOut[0]) * time.Second
 	}
 
-	g.Trace("%s -> %s", method, URL)
 	req, err := http.NewRequest(method, URL, body)
 	if err != nil {
 		return nil, nil, g.Error(err, "could not %s @ %s", method, URL)
@@ -101,7 +99,7 @@ func ClientDo(method, URL string, body io.Reader, headers map[string]string, tim
 		return
 	}
 
-	respBytes, err = ioutil.ReadAll(resp.Body)
+	respBytes, err = io.ReadAll(resp.Body)
 	if err != nil {
 		err = g.Error(err, "could not read from request body")
 	}

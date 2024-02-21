@@ -1,7 +1,7 @@
 package g
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"regexp"
 	"runtime"
@@ -34,7 +34,7 @@ func UpdatePublicIP() error {
 	if err != nil {
 		return Error(err, "Could not Get IP from http://ifconfig.me")
 	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return Error(err, "Could not read IP response from http://ifconfig.me")
 	}
