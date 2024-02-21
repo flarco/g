@@ -103,11 +103,6 @@ func ToMapString(j map[string]interface{}) map[string]string {
 	return m
 }
 
-// IsTask returns true is is TASK
-func IsTask() bool {
-	return os.Getenv("G_LOGGING") == "TASK"
-}
-
 // GetType : return the type of an interface
 func GetType(myvar interface{}) string {
 	t := reflect.TypeOf(myvar)

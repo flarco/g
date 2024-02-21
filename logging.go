@@ -143,6 +143,11 @@ func IsDebugLow() bool {
 	return GetLogLevel() == LowDebugLevel || GetLogLevel() == TraceLevel
 }
 
+// IsTrace returns true is debug is trace
+func IsTrace() bool {
+	return GetLogLevel() == TraceLevel
+}
+
 func disableColor() bool {
 	return DisableColor
 }
@@ -268,11 +273,7 @@ func DebugLow(text string, args ...interface{}) {
 // Info : print text in info level
 func Info(text string, args ...interface{}) {
 	doHooks(zerolog.InfoLevel, text, args)
-	if IsTask() {
-		doLog(ZLogOut.Info(), text, args)
-	} else {
-		doLog(ZLogErr.Info(), text, args)
-	}
+	doLog(ZLogErr.Info(), text, args)
 }
 
 func doHooks(level zerolog.Level, text string, args []interface{}) {
@@ -344,8 +345,8 @@ func LogCWhite(text string) { LogC(text, "white", os.Stderr) }
 // LogCCyan prints in white
 func LogCCyan(text string) { LogC(text, "cyan", os.Stderr) }
 
-// LogFatal handles logging of an error and exits, useful for reporting
-func LogFatal(E error, args ...interface{}) {
+// PrintFatal prints the fatal error message
+func PrintFatal(E error, args ...interface{}) {
 	prefix := "fatal:\n"
 	if E != nil {
 		err, ok := E.(*ErrType)
@@ -355,13 +356,16 @@ func LogFatal(E error, args ...interface{}) {
 
 		if !IsDebugLow() {
 			println(color.RedString(prefix + err.Full()))
-			os.Exit(1)
+		} else {
+			println(color.RedString(prefix + err.Debug())) // stderr for detailed
 		}
+	}
+}
 
-		if IsTask() {
-			fmt.Fprintf(os.Stdout, err.Err) // stdout simple err
-		}
-		println(color.RedString(prefix + err.Debug())) // stderr for detailed
+// LogFatal handles logging of an error and exits, useful for reporting
+func LogFatal(E error, args ...interface{}) {
+	if E != nil {
+		PrintFatal(E, args...)
 		os.Exit(1)
 	}
 }
@@ -376,11 +380,7 @@ func Trace(text string, args ...interface{}) {
 // Warn : print text in warning level
 func Warn(text string, args ...interface{}) {
 	doHooks(zerolog.WarnLevel, text, args)
-	if IsTask() {
-		doLog(ZLogOut.Warn(), text, args)
-	} else {
-		doLog(ZLogErr.Warn(), text, args)
-	}
+	doLog(ZLogErr.Warn(), text, args)
 }
 
 // TimeColored returns the time colored

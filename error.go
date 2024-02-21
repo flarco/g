@@ -64,12 +64,22 @@ func (e *ErrType) OriginalError() error {
 	return fmt.Errorf(e.Err)
 }
 
-// Debug returns a stacked error for debugging
-func (e *ErrType) Debug() string {
-	if len(e.CallerStack) == 0 {
-		return e.Err
+// LastCaller returns the last caller
+func (e *ErrType) LastCaller() string {
+	stack := e.Stack()
+	if len(stack) == 0 {
+		return "Unknown"
 	}
 
+	for _, caller := range e.CallerStack {
+		return caller
+	}
+
+	return "Unknown"
+}
+
+// Stack returns the stack
+func (e *ErrType) Stack() []string {
 	stack := []string{}
 	for i, caller := range e.CallerStack {
 		msg := ""
@@ -87,7 +97,16 @@ func (e *ErrType) Debug() string {
 	for i, j := 0, len(stack)-1; i < j; i, j = i+1, j-1 {
 		stack[i], stack[j] = stack[j], stack[i]
 	}
-	return F("%s\n%s", strings.Join(stack, "\n"), e.Err)
+	return stack
+}
+
+// Debug returns a stacked error for debugging
+func (e *ErrType) Debug() string {
+	if len(e.CallerStack) == 0 {
+		return e.Err
+	}
+
+	return F("%s\n%s", strings.Join(e.Stack(), "\n"), e.Err)
 }
 
 func getCallerStack(levelsUp int) []string {
@@ -194,10 +213,7 @@ func LogError(E error, args ...interface{}) bool {
 			err = NewError(3, E, args...).(*ErrType)
 		}
 		doHooks(zerolog.DebugLevel, err.Error(), args)
-		if IsTask() {
-			ZLogOut.Err(err.OriginalError()).Msg(msg) // simple message in STDOUT
-			ZLogErr.Err(err.DebugError()).Msg(msg)
-		} else if IsDebugLow() {
+		if IsDebugLow() {
 			ZLogErr.Err(err.DebugError()).Msg(msg)
 		} else {
 			ZLogErr.Err(err.OriginalError()).Msg(msg) // detailed error in STDERR
