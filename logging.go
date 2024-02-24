@@ -324,27 +324,6 @@ func LogC(text string, col string, w io.Writer) {
 	fmt.Fprintf(w, "%s -- %s\n", TimeColored(), textColored)
 }
 
-// LogCGreen prints in green
-func LogCGreen(text string) { LogC(text, "green", os.Stderr) }
-
-// LogCRed prints in red
-func LogCRed(text string) { LogC(text, "red", os.Stderr) }
-
-// LogCRedErr prints in red to Stderr
-func LogCRedErr(text string) { LogC(text, "red", os.Stderr) }
-
-// LogCBlue prints in blue
-func LogCBlue(text string) { LogC(text, "blue", os.Stderr) }
-
-// LogCMagenta print in magenta
-func LogCMagenta(text string) { LogC(text, "magenta", os.Stderr) }
-
-// LogCWhite prints in white
-func LogCWhite(text string) { LogC(text, "white", os.Stderr) }
-
-// LogCCyan prints in white
-func LogCCyan(text string) { LogC(text, "cyan", os.Stderr) }
-
 // PrintFatal prints the fatal error message
 func PrintFatal(E error, args ...interface{}) {
 	prefix := "fatal:\n"

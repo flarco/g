@@ -76,6 +76,7 @@ func (c *Context) MemBasedLimit(percentLimit int) {
 // and cancels the context
 func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 	if E != nil {
+		Trace("Context.CaptureErr => %#v", E)
 		if GetLogLevel() == TraceLevel {
 			LogError(E)
 		}
@@ -88,9 +89,7 @@ func (c *Context) CaptureErr(E error, args ...interface{}) bool {
 // Err return error if any
 func (c *Context) Err() error {
 	if c.Ctx.Err() != nil {
-		eg := ErrorGroup{Errors: []error{c.Ctx.Err()}}
-		eg.Capture(c.ErrGroup.Err())
-		return eg.Err()
+		c.ErrGroup.Capture(c.Ctx.Err())
 	}
 	return c.ErrGroup.Err()
 }

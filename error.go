@@ -3,7 +3,6 @@ package g
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"runtime"
 	"sort"
 	"strings"
@@ -34,8 +33,14 @@ func (e *ErrType) Full() string {
 		return e.Err
 	}
 
-	MsgStack := make([]string, len(e.MsgStack))
-	copy(MsgStack, e.MsgStack)
+	MsgStack := []string{}
+	for _, msg := range e.MsgStack {
+		if msg == "" {
+			continue
+		}
+		MsgStack = append(MsgStack, msg)
+	}
+
 	for i, j := 0, len(MsgStack)-1; i < j; i, j = i+1, j-1 {
 		MsgStack[i], MsgStack[j] = MsgStack[j], MsgStack[i]
 	}
@@ -43,7 +48,7 @@ func (e *ErrType) Full() string {
 }
 
 func (e *ErrType) Error() string {
-	if len(e.MsgStack) == 0 {
+	if len(e.MsgStack) == 0 || e.MsgStack[0] == "" {
 		return e.Err
 	}
 	return F("~ %s\n%s", e.MsgStack[0], e.Err)
@@ -275,22 +280,9 @@ func ErrorText(e error) string {
 // AssertNoError asserts there is no error an logs it if there is
 func AssertNoError(t *testing.T, e error) bool {
 	if e != nil {
-		LogError(e)
+		PrintFatal(e)
 	}
 	return assert.NoError(t, e)
-}
-
-// LogErrorMail handles logging of an error and mail it to self
-func LogErrorMail(E error) {
-	LogCRedErr(E.Error())
-	SendMail(SMTPUser, []string{AlertEmail}, "Error | "+os.Args[0], E.Error())
-}
-
-// LogIfError handles logging of an error if it i not nil, useful for reporting
-func LogIfError(E error) {
-	if E != nil {
-		LogError(E)
-	}
 }
 
 // ErrorGroup represents a group of errors
@@ -300,8 +292,8 @@ type ErrorGroup struct {
 }
 
 // Add adds an error to the error group
-func (e *ErrorGroup) Add(err error) {
-	e.Errors = append(e.Errors, err)
+func (e *ErrorGroup) Add(err ...error) {
+	e.Errors = append(e.Errors, err...)
 }
 
 // Len returns the number of errors captured
