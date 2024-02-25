@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/integrii/flaggy"
+	"github.com/jedib0t/go-pretty/table"
 	"github.com/spf13/cast"
 )
 
@@ -311,4 +312,19 @@ func (c *CliSC) UsedSC() string {
 		return sc2.Name
 	}
 	return ""
+}
+
+func PrettyTable(header []string, rows [][]any) (output string) {
+	T := table.NewWriter()
+
+	headerValues := make(table.Row, len(header))
+	for i, name := range header {
+		headerValues[i] = name
+	}
+
+	T.AppendHeader(headerValues)
+	for _, row := range rows {
+		T.AppendRow(row)
+	}
+	return T.Render()
 }
