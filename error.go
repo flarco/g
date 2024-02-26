@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
-	"sort"
 	"strings"
 	"testing"
 
@@ -289,6 +288,7 @@ func AssertNoError(t *testing.T, e error) bool {
 type ErrorGroup struct {
 	Logging bool
 	Errors  []error
+	Names   []string
 }
 
 // Add adds an error to the error group
@@ -302,9 +302,14 @@ func (e *ErrorGroup) Len() int {
 }
 
 // Capture adds an error to the error group, and return true if err was not nil
-func (e *ErrorGroup) Capture(err error) bool {
+func (e *ErrorGroup) Capture(err error, name ...string) bool {
 	if err != nil {
+		Name := ""
+		if len(name) > 0 {
+			Name = name[0]
+		}
 		e.Errors = append(e.Errors, err)
+		e.Names = append(e.Names, Name)
 		return true
 	}
 	return false
@@ -320,21 +325,29 @@ func (e *ErrorGroup) Err() error {
 	if len(e.Errors) == 0 {
 		return nil
 	}
+	bars := "---------------------------"
 
-	errstrings := map[string]struct{}{}
-	for _, err := range e.Errors {
-		if err2, ok := err.(*ErrType); ok && IsDebugLow() {
-			errstrings[err2.Debug()] = struct{}{}
-		} else {
-			errstrings[err.Error()] = struct{}{}
+	errstringsMap := map[string]struct{}{}
+	errStrings := []string{}
+	for i, err := range e.Errors {
+		errString := "\n"
+		if len(e.Names) == len(e.Errors) && e.Names[i] != "" {
+			errString = F("\n%s %s %s\n", bars, e.Names[i], bars)
 		}
+
+		if err2, ok := err.(*ErrType); ok && IsDebug() {
+			errString = errString + err2.Debug()
+		} else {
+			errString = errString + err2.Error()
+		}
+
+		if _, ok := errstringsMap[errString]; !ok {
+			errStrings = append(errStrings, errString)
+		}
+		errstringsMap[errString] = struct{}{}
 	}
-	errstringsArr := []string{}
-	for k := range errstrings {
-		errstringsArr = append(errstringsArr, k)
-	}
-	sort.Strings(errstringsArr)
-	return fmt.Errorf(strings.Join(errstringsArr, "\n\n"))
+
+	return fmt.Errorf(strings.Join(errStrings, "\n"))
 }
 
 // ErrJSON returns to the echo.Context as JSON formatted

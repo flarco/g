@@ -138,6 +138,11 @@ func SetLogHook(lh *LogHook) {
 	LogHooks = append(LogHooks, lh)
 }
 
+// IsDebug returns true is debug is low
+func IsDebug() bool {
+	return GetLogLevel() == DebugLevel || IsDebugLow()
+}
+
 // IsDebugLow returns true is debug is low
 func IsDebugLow() bool {
 	return GetLogLevel() == LowDebugLevel || GetLogLevel() == TraceLevel
@@ -334,7 +339,7 @@ func PrintFatal(E error, args ...interface{}) {
 		}
 
 		if !IsDebugLow() {
-			println(color.RedString(prefix + err.Full()))
+			println(color.RedString(prefix + err.Error()))
 		} else {
 			println(color.RedString(prefix + err.Debug())) // stderr for detailed
 		}
