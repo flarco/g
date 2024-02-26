@@ -330,6 +330,10 @@ func (e *ErrorGroup) Err() error {
 	errstringsMap := map[string]struct{}{}
 	errStrings := []string{}
 	for i, err := range e.Errors {
+		if err == nil {
+			continue
+		}
+
 		errString := "\n"
 		if len(e.Names) == len(e.Errors) && e.Names[i] != "" {
 			errString = F("\n%s %s %s\n", bars, e.Names[i], bars)
