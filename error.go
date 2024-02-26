@@ -342,7 +342,7 @@ func (e *ErrorGroup) Err() error {
 		if err2, ok := err.(*ErrType); ok && IsDebug() {
 			errString = errString + err2.Debug()
 		} else {
-			errString = errString + err2.Error()
+			errString = errString + err.Error()
 		}
 
 		if _, ok := errstringsMap[errString]; !ok {
