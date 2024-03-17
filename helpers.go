@@ -699,6 +699,7 @@ func DurationString(duration time.Duration) (d string) {
 	mins := secs / 60
 	hours := mins / 60
 	days := hours / 24
+	years := days / 365
 
 	if secs < 60 {
 		return F("%ds", secs)
@@ -712,5 +713,9 @@ func DurationString(duration time.Duration) (d string) {
 		return F("%dh %dm", hours, mins%60)
 	}
 
-	return F("%dd %dh", days, hours%24)
+	if days < 365 {
+		return F("%dd %dh", days, hours%24)
+	}
+
+	return F("%dy %dd", years, days%365)
 }
