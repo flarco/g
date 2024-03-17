@@ -696,16 +696,21 @@ func CompareVersions(current, latest string) (isNew bool, err error) {
 
 func DurationString(duration time.Duration) (d string) {
 	secs := cast.ToInt(math.Floor(duration.Seconds()))
-	mins := cast.ToInt(math.Floor(duration.Minutes()))
-	hours := cast.ToInt(math.Floor(duration.Hours()))
+	mins := secs / 60
+	hours := mins / 60
+	days := hours / 24
 
 	if secs < 60 {
 		return F("%d secs", secs)
 	}
 
-	if hours < 60 {
-		return F("%dm %ds", mins, secs)
+	if mins < 60 {
+		return F("%dm %ds", mins, secs%60)
 	}
 
-	return F("%dh %dm", hours, mins)
+	if hours < 24 {
+		return F("%dh %dm", hours, mins%60)
+	}
+
+	return F("%dd %dh", days, hours%24)
 }
