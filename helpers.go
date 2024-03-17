@@ -701,7 +701,7 @@ func DurationString(duration time.Duration) (d string) {
 	days := hours / 24
 
 	if secs < 60 {
-		return F("%d secs", secs)
+		return F("%ds", secs)
 	}
 
 	if mins < 60 {
