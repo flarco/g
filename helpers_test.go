@@ -243,3 +243,15 @@ func BenchmarkMux(b *testing.B) {
 		c.Unlock()
 	}
 }
+
+func TestLoggerColor(t *testing.T) {
+	println(Colorize(ColorRed, "colorRed"))
+	println(Colorize(ColorGreen, "colorGreen"))
+	println(Colorize(ColorYellow, "colorYellow"))
+	println(Colorize(ColorBlue, "colorBlue"))
+	println(Colorize(ColorMagenta, "colorMagenta"))
+	println(Colorize(ColorCyan, "colorCyan"))
+	println(Colorize(ColorWhite, "colorWhite"))
+	println(Colorize(ColorBold, "ColorBold"))
+	println(Colorize(ColorDarkGray, "ColorDarkGray"))
+}

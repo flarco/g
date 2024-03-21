@@ -27,6 +27,20 @@ type LogHook struct {
 	ticker   *time.Ticker
 }
 
+const (
+	ColorBlack = iota + 30
+	ColorRed
+	ColorGreen
+	ColorYellow
+	ColorBlue
+	ColorMagenta
+	ColorCyan
+	ColorWhite
+
+	ColorBold     = 1
+	ColorDarkGray = 90
+)
+
 // LogHooks are log hooks
 var LogHooks = []*LogHook{}
 
@@ -373,4 +387,8 @@ func TimeColored() string {
 		return time.Now().Format("2006-01-02 15:04:05")
 	}
 	return color.CyanString(time.Now().Format("2006-01-02 15:04:05"))
+}
+
+func Colorize(color int, text string) string {
+	return fmt.Sprintf("\x1b[%dm%v\x1b[0m", color, text)
 }
