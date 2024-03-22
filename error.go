@@ -235,7 +235,7 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		e.Type = e.Stacktrace.Frames[len(e.Stacktrace.Frames)-1].Function
 		event.Exception[0] = e
 
-		SentryConfigureFunc(event, scope)
+		SentryConfigureFunc(event, scope, exception)
 		hint := &sentry.EventHint{OriginalException: exception}
 		client.CaptureEvent(event, hint, scope)
 
@@ -451,7 +451,7 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 
 var SentryRelease = ""
 var SentryDsn = ""
-var SentryConfigureFunc = func(event *sentry.Event, scope *sentry.Scope) {}
+var SentryConfigureFunc = func(event *sentry.Event, scope *sentry.Scope, exception *ErrType) {}
 var sentryErrorMap = map[string]int64{}
 var sentryMux = sync.Mutex{}
 
