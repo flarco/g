@@ -209,17 +209,20 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		Position:    Position,
 	}
 
+	isErrGroup := false
 	errHash := MD5(Err)
 	if len(CallerStack) > 0 {
 		errHash = MD5(CallerStack[0], Err)
+		isErrGroup = strings.Contains(Err, bars) || strings.Contains(CallerStack[0], bars)
 	}
 
 	hub := sentry.CurrentHub()
 	client, scope := hub.Client(), hub.Scope()
 	// sentry.CaptureException(exception)
+	// Warn("%s\n%#v\n|%s", Err, isErrGroup, CallerStack[0])
 
 	sentryMux.Lock()
-	if client != nil && scope != nil && sentryErrorMap[errHash] == 0 {
+	if client != nil && scope != nil && sentryErrorMap[errHash] == 0 && !isErrGroup {
 		event := client.EventFromException(exception, sentry.LevelError)
 
 		e := event.Exception[0]
@@ -363,12 +366,13 @@ func (e *ErrorGroup) Reset() {
 	e.Errors = []error{}
 }
 
+var bars = "---------------------------"
+
 // Err returns an error if any errors had been added
 func (e *ErrorGroup) Err() error {
 	if len(e.Errors) == 0 {
 		return nil
 	}
-	bars := "---------------------------"
 
 	errstringsMap := map[string]struct{}{}
 	errStrings := []string{}
