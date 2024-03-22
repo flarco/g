@@ -448,11 +448,7 @@ func MarshalMap(m map[string]interface{}) []byte {
 
 // Unmarshal unmarshals into an objPtr
 func Unmarshal(s string, objPtr interface{}) error {
-	err := json.Unmarshal([]byte(s), objPtr)
-	if err != nil {
-		err = Error(err, "could not unmarshal")
-	}
-	return err
+	return json.Unmarshal([]byte(s), objPtr)
 }
 
 // UnmarshalMap unmarshals into a map of interface
@@ -460,7 +456,6 @@ func UnmarshalMap(s string) (map[string]interface{}, error) {
 	m := M()
 	err := json.Unmarshal([]byte(s), &m)
 	if err != nil {
-		err = Error(err, "could not unmarshal into map")
 		return m, err
 	}
 	return m, nil
@@ -565,12 +560,12 @@ func MD5(text ...string) string {
 func JSONConvert(source interface{}, destination interface{}) (err error) {
 	b, err := JSONMarshal(source)
 	if err != nil {
-		return Error(err, "could not marshal in JSONConvert")
+		return
 	}
 
 	err = JSONUnmarshal(b, destination)
 	if err != nil {
-		return Error(err, "could not unmarshal in JSONConvert")
+		return
 	}
 	return
 }
@@ -597,11 +592,7 @@ func JSONUnmarshalToMap(b []byte) (map[string]interface{}, error) {
 
 // JSONUnmarshal
 func JSONUnmarshal(b []byte, p interface{}) error {
-	err := json.Unmarshal(b, p)
-	if err != nil {
-		err = Error(err, "could not unmarshal")
-	}
-	return err
+	return json.Unmarshal(b, p)
 }
 
 func IsMatched(filters []string, name string) bool {

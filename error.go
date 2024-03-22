@@ -5,12 +5,22 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 	"github.com/spf13/cast"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	if SentryDsn != "" {
+		SentryInit()
+	}
+}
 
 // ErrType is an error with details
 type ErrType struct {
@@ -155,7 +165,7 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		CallerStack = et.CallerStack
 		Position = et.Position + 1
 	case string:
-		if e0 := JSONUnmarshal([]byte(et), &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
+		if e0 := json.Unmarshal([]byte(et), &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
 			Err = errPrev.Err
 			MsgStack = append(errPrev.MsgStack, MsgStack...)
 			Position = errPrev.Position + 1
@@ -192,12 +202,45 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		}
 	}
 
-	return &ErrType{
+	exception := &ErrType{
 		Err:         Err,
 		MsgStack:    MsgStack,
 		CallerStack: CallerStack,
 		Position:    Position,
 	}
+
+	errHash := MD5(Err)
+	if len(CallerStack) > 0 {
+		errHash = MD5(CallerStack[0], Err)
+	}
+
+	hub := sentry.CurrentHub()
+	client, scope := hub.Client(), hub.Scope()
+	// sentry.CaptureException(exception)
+
+	sentryMux.Lock()
+	if client != nil && scope != nil && sentryErrorMap[errHash] == 0 {
+		event := client.EventFromException(exception, sentry.LevelError)
+
+		e := event.Exception[0]
+		l := len(e.Stacktrace.Frames)
+
+		e.Stacktrace.Frames = lo.Filter(e.Stacktrace.Frames, func(e sentry.Frame, i int) bool {
+			return i < l-2
+		})
+
+		e.Type = e.Stacktrace.Frames[len(e.Stacktrace.Frames)-1].Function
+		event.Exception[0] = e
+
+		SentryConfigureFunc(event, scope)
+		hint := &sentry.EventHint{OriginalException: exception}
+		client.CaptureEvent(event, hint, scope)
+
+		sentryErrorMap[errHash] = time.Now().Unix()
+	}
+	sentryMux.Unlock()
+
+	return exception
 }
 
 // Error returns stacktrace error with message
@@ -400,4 +443,23 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 		he.Message = message[0]
 	}
 	return he
+}
+
+var SentryRelease = ""
+var SentryDsn = ""
+var SentryConfigureFunc = func(event *sentry.Event, scope *sentry.Scope) {}
+var sentryErrorMap = map[string]int64{}
+var sentryMux = sync.Mutex{}
+
+func SentryInit() {
+	sentryOptions := sentry.ClientOptions{
+		// or SENTRY_DSN environment variable
+		Dsn: SentryDsn,
+		// Either set environment and release here or set the SENTRY_ENVIRONMENT
+		// and SENTRY_RELEASE environment variables.
+		Environment: lo.Ternary(strings.HasSuffix(SentryRelease, "dev"), "Development", "Production"),
+		Release:     SentryRelease,
+		Debug:       false,
+	}
+	sentry.Init(sentryOptions)
 }
