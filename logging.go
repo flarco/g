@@ -1,6 +1,7 @@
 package g
 
 import (
+	jsonGo "encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -181,7 +182,7 @@ func PP(v interface{}) {
 
 // Pretty returns the Pretty Printed JSON struct string
 func Pretty(v interface{}) string {
-	vv, _ := json.MarshalIndent(v, "", "  ")
+	vv, _ := jsonGo.MarshalIndent(v, "", "  ")
 	return string(vv)
 }
 
