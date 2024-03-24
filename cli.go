@@ -324,6 +324,11 @@ func PrettyTable(header []string, rows [][]any) (output string) {
 
 	T.AppendHeader(headerValues)
 	for _, row := range rows {
+		for i, val := range row {
+			if val == nil {
+				row[i] = ""
+			}
+		}
 		T.AppendRow(row)
 	}
 	return T.Render()
