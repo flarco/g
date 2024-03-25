@@ -78,6 +78,11 @@ func (e *ErrType) OriginalError() error {
 	return fmt.Errorf(e.Err)
 }
 
+// CallerStackMD5 returns the stack md5
+func (e *ErrType) CallerStackMD5() string {
+	return MD5(e.CallerStack...)
+}
+
 // LastCaller returns the last caller
 func (e *ErrType) LastCaller() string {
 	stack := e.Stack()
@@ -235,11 +240,12 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		e.Type = e.Stacktrace.Frames[len(e.Stacktrace.Frames)-1].Function
 		event.Exception[0] = e
 
-		SentryConfigureFunc(event, scope, exception)
-		hint := &sentry.EventHint{OriginalException: exception}
-		client.CaptureEvent(event, hint, scope)
+		if SentryConfigureFunc(event, scope, exception) {
+			hint := &sentry.EventHint{OriginalException: exception}
+			client.CaptureEvent(event, hint, scope)
 
-		sentryErrorMap[errHash] = time.Now().Unix()
+			sentryErrorMap[errHash] = time.Now().Unix()
+		}
 	}
 	sentryMux.Unlock()
 
@@ -451,7 +457,7 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 
 var SentryRelease = ""
 var SentryDsn = ""
-var SentryConfigureFunc = func(event *sentry.Event, scope *sentry.Scope, exception *ErrType) {}
+var SentryConfigureFunc = func(event *sentry.Event, scope *sentry.Scope, exception *ErrType) bool { return false }
 var sentryErrorMap = map[string]int64{}
 var sentryMux = sync.Mutex{}
 
