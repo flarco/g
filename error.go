@@ -240,12 +240,9 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		e.Type = e.Stacktrace.Frames[len(e.Stacktrace.Frames)-1].Function
 		event.Exception[0] = e
 
-		if SentryConfigureFunc(event, scope, exception) {
-			hint := &sentry.EventHint{OriginalException: exception}
-			client.CaptureEvent(event, hint, scope)
-
-			sentryErrorMap[errHash] = time.Now().Unix()
-		}
+		sentryEvent := &SentryEvent{event, scope, exception, errHash}
+		sentryEvents = append(sentryEvents, sentryEvent)
+		sentryErrorMap[errHash] = time.Now().Unix()
 	}
 	sentryMux.Unlock()
 
@@ -457,9 +454,18 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 
 var SentryRelease = ""
 var SentryDsn = ""
-var SentryConfigureFunc = func(event *sentry.Event, scope *sentry.Scope, exception *ErrType) bool { return false }
+var SentryConfigureFunc = func(event *SentryEvent) bool { return false }
 var sentryErrorMap = map[string]int64{}
 var sentryMux = sync.Mutex{}
+
+type SentryEvent struct {
+	Event     *sentry.Event
+	Scope     *sentry.Scope
+	Exception *ErrType
+	Hash      string
+}
+
+var sentryEvents = []*SentryEvent{}
 
 func SentryInit() {
 	sentryOptions := sentry.ClientOptions{
@@ -472,4 +478,32 @@ func SentryInit() {
 		Debug:       false,
 	}
 	sentry.Init(sentryOptions)
+}
+
+func SentryFlush(timeout time.Duration) {
+	hub := sentry.CurrentHub()
+	client := hub.Client()
+	captured := 0
+	firstErr := ""
+	for _, sentryEvent := range sentryEvents {
+		if e := sentryEvent.Exception; captured > 0 {
+			stack := Marshal(sentryEvent.Exception.Stack()) + " " + sentryEvent.Exception.Err
+			if e.Err == "" || strings.Contains(stack, "context canceled") || (firstErr != "" && strings.Contains(stack, firstErr)) {
+				continue // don't capture since we already have first
+			}
+		}
+
+		if SentryConfigureFunc(sentryEvent) {
+			hint := &sentry.EventHint{OriginalException: sentryEvent.Exception}
+			client.CaptureEvent(sentryEvent.Event, hint, sentryEvent.Scope)
+			captured++
+			if firstErr == "" {
+				firstErr = sentryEvent.Exception.Err
+			}
+
+			// Warn(">>>>>>" + Pretty(sentryEvent.Exception.Stack()))
+			// Info(sentryEvent.Exception.Err)
+		}
+	}
+	sentry.Flush(timeout)
 }
