@@ -241,7 +241,7 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 	// Warn("%s\n%#v\n|%s", Err, isErrGroup, CallerStack[0])
 
 	sentryMux.Lock()
-	if client != nil && scope != nil && sentryErrorMap[errHash] == 0 && !isErrGroup {
+	if client != nil && scope != nil && sentryErrorMap[errHash] == 0 && !isErrGroup && len(sentryEvents) < 15 {
 		event := client.EventFromException(exception, sentry.LevelError)
 
 		e := event.Exception[0]
