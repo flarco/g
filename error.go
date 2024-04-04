@@ -30,6 +30,12 @@ type ErrType struct {
 	Position    int      // the position in the array stack (0 is first)
 }
 
+type ErrorInterface interface {
+	String() string
+	Debug() string
+	MD5() string
+}
+
 // MsgStacked return a stacked error message
 func (e *ErrType) MsgStacked() (m string) {
 	ErrStack := append([]string{e.Err}, e.MsgStack...)
@@ -117,6 +123,14 @@ func (e *ErrType) Stack() []string {
 		stack[i], stack[j] = stack[j], stack[i]
 	}
 	return stack
+}
+
+func (e *ErrType) MD5() string {
+	errHash := MD5(e.Err)
+	if len(e.CallerStack) > 0 {
+		errHash = MD5(e.CallerStack[0], e.Err)
+	}
+	return errHash
 }
 
 // Debug returns a stacked error for debugging
@@ -371,13 +385,75 @@ func (e *ErrorGroup) Reset() {
 
 var bars = "---------------------------"
 
+func (e *ErrorGroup) Error() string {
+	return e.String()
+}
+
+func (e *ErrorGroup) MD5() string {
+	parts := []string{}
+	for _, err := range e.Errors {
+		switch et := err.(type) {
+		case ErrorInterface:
+			parts = append(parts, et.MD5())
+		default:
+			parts = append(parts, MD5(err.Error()))
+		}
+	}
+	return MD5(parts...)
+}
+
+func (e *ErrorGroup) Debug() string {
+	if len(e.Errors) == 0 {
+		return ""
+	}
+
+	errStringsMap := map[string]struct{}{}
+	errStrings := []string{}
+	for i, err := range e.Errors {
+		if err == nil {
+			continue
+		}
+
+		errString := "\n"
+		if len(e.Names) == len(e.Errors) && e.Names[i] != "" {
+			errString = F("\n%s %s %s\n", bars, e.Names[i], bars)
+		}
+
+		errHash := MD5(err.Error())
+		switch et := err.(type) {
+		case ErrorInterface:
+			errHash = et.MD5()
+			if IsDebug() {
+				errString = errString + et.Debug()
+			}
+		default:
+			errString = errString + err.Error()
+		}
+
+		if _, ok := errStringsMap[errHash]; !ok {
+			errStrings = append(errStrings, errString)
+		}
+		errStringsMap[errHash] = struct{}{}
+	}
+
+	return strings.Join(errStrings, "\n")
+}
+
 // Err returns an error if any errors had been added
 func (e *ErrorGroup) Err() error {
 	if len(e.Errors) == 0 {
 		return nil
 	}
+	// return e
+	return fmt.Errorf(e.String())
+}
 
-	errstringsMap := map[string]struct{}{}
+func (e *ErrorGroup) String() string {
+	if len(e.Errors) == 0 {
+		return ""
+	}
+
+	errStringsMap := map[string]struct{}{}
 	errStrings := []string{}
 	for i, err := range e.Errors {
 		if err == nil {
@@ -395,13 +471,13 @@ func (e *ErrorGroup) Err() error {
 			errString = errString + err.Error()
 		}
 
-		if _, ok := errstringsMap[errString]; !ok {
+		if _, ok := errStringsMap[errString]; !ok {
 			errStrings = append(errStrings, errString)
 		}
-		errstringsMap[errString] = struct{}{}
+		errStringsMap[errString] = struct{}{}
 	}
 
-	return fmt.Errorf(strings.Join(errStrings, "\n"))
+	return strings.Join(errStrings, "\n")
 }
 
 // ErrJSON returns to the echo.Context as JSON formatted

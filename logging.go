@@ -317,7 +317,7 @@ func LogC(text string, col string, w io.Writer) {
 
 	switch col {
 	case "red":
-		textColored = color.RedString(text)
+		textColored = Colorize(ColorRed, text)
 	case "green":
 		textColored = color.GreenString(text)
 	case "blue":
@@ -353,10 +353,29 @@ func PrintFatal(E error, args ...interface{}) {
 			err = NewError(3, E, args...).(*ErrType)
 		}
 
-		if !IsDebugLow() {
-			println(color.RedString(prefix + err.Error()))
+		eG, ok := E.(*ErrorGroup)
+		if ok {
+			if !IsDebugLow() {
+				println(Colorize(ColorRed, prefix+eG.Error()))
+			} else {
+				println(Colorize(ColorRed, prefix+eG.Debug())) // stderr for detailed
+			}
 		} else {
-			println(color.RedString(prefix + err.Debug())) // stderr for detailed
+			if !IsDebugLow() {
+				println(Colorize(ColorRed, prefix+err.Error()))
+			} else {
+				errParts := strings.Split(err.Err, "\n\n")
+				errStrings := []string{}
+				errHash := map[string]struct{}{}
+				for _, errPart := range errParts {
+					if _, ok := errHash[errPart]; !ok && errPart != "context canceled" {
+						errStrings = append(errStrings, errPart)
+					}
+					errHash[errPart] = struct{}{}
+				}
+				output := F("%s\n%s", strings.Join(err.Stack(), "\n"), strings.Join(errStrings, "\n\n"))
+				println(Colorize(ColorRed, prefix+output)) // stderr for detailed
+			}
 		}
 	}
 }
