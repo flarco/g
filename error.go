@@ -66,7 +66,7 @@ func (e *ErrType) Error() string {
 	if len(e.MsgStack) == 0 || e.MsgStack[0] == "" {
 		return e.Err
 	}
-	return F("~ %s\n%s", e.MsgStack[0], e.Err)
+	return F("~ %s\n%s", e.MsgStack[0], strings.TrimSpace(e.Err))
 }
 
 // FullError returns an error type with a detailed string

@@ -346,6 +346,27 @@ func LogC(text string, col string, w io.Writer) {
 
 // PrintFatal prints the fatal error message
 func PrintFatal(E error, args ...interface{}) {
+	makeErrStrings := func(payload string) string {
+		cancelledCount := 0
+		errParts := strings.Split(payload, "\n\n")
+		errStrings := []string{}
+		errHash := map[string]struct{}{}
+		for _, errPart := range errParts {
+			if _, ok := errHash[errPart]; !ok && errPart != "context canceled" {
+				if ps := strings.Split(errPart, "\n"); ps[len(ps)-1] == "context canceled" {
+					cancelledCount++
+				}
+				errStrings = append(errStrings, errPart)
+			}
+			errHash[errPart] = struct{}{}
+		}
+
+		if cancelledCount == len(errStrings) {
+			return "cancelled"
+		}
+		return strings.Join(errStrings, "\n\n")
+	}
+
 	prefix := "fatal:\n"
 	if E != nil {
 		err, ok := E.(*ErrType)
@@ -362,18 +383,11 @@ func PrintFatal(E error, args ...interface{}) {
 			}
 		} else {
 			if !IsDebugLow() {
-				println(Colorize(ColorRed, prefix+err.Error()))
+				joined := makeErrStrings(err.Error())
+				println(Colorize(ColorRed, prefix+joined))
 			} else {
-				errParts := strings.Split(err.Err, "\n\n")
-				errStrings := []string{}
-				errHash := map[string]struct{}{}
-				for _, errPart := range errParts {
-					if _, ok := errHash[errPart]; !ok && errPart != "context canceled" {
-						errStrings = append(errStrings, errPart)
-					}
-					errHash[errPart] = struct{}{}
-				}
-				output := F("%s\n%s", strings.Join(err.Stack(), "\n"), strings.Join(errStrings, "\n\n"))
+				joined := makeErrStrings(err.Err)
+				output := F("%s\n%s", strings.Join(err.Stack(), "\n"), joined)
 				println(Colorize(ColorRed, prefix+output)) // stderr for detailed
 			}
 		}
