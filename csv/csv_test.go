@@ -110,6 +110,36 @@ func TestCsvReader3(t *testing.T) {
 
 }
 
+func TestCsvReader4(t *testing.T) {
+	in := "c1,c2,c3\r\n1,2,3\r\n4,5,6"
+
+	c := NewCsv(CsvOptions{Delimiter: ',', Escape: '"'})
+
+	r := c.NewReader(strings.NewReader(in))
+
+	rows := [][]string{}
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		rows = append(rows, record)
+
+		fmt.Println(g.Marshal(record))
+		println()
+	}
+
+	if assert.Equal(t, 3, len(rows)) {
+		assert.Equal(t, `["c1","c2","c3"]`, g.Marshal(rows[0]))
+		assert.Equal(t, `["1","2","3"]`, g.Marshal(rows[1]))
+		assert.Equal(t, `["4","5","6"]`, g.Marshal(rows[2]))
+	}
+
+}
+
 // benchmarkReadNew measures reading the provided CSV rows data.
 // initReader, if non-nil, modifies the Reader before it's used.
 func benchmarkReadNew(b *testing.B, opts CsvOptions, rows string) {

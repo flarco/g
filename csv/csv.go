@@ -28,13 +28,12 @@ type CsvReader struct {
 	state      int
 	csv        *Csv
 	lineBuffer []byte
-	lastRow    []string
-
-	line   uint64
-	column int
-	token  Token
-	cell   Cell
-	row    Row
+	numFields  int
+	line       uint64
+	column     int
+	token      Token
+	cell       Cell
+	row        Row
 }
 
 type Row []Cell
@@ -92,7 +91,11 @@ func (cr *CsvReader) Read() (row []string, err error) {
 			break
 		}
 	}
-	cr.lastRow = row
+
+	if len(row) > cr.numFields {
+		cr.numFields = len(row)
+	}
+
 	return
 }
 
@@ -122,7 +125,10 @@ func (cr *CsvReader) readLine(line []byte) (row []string, ok bool, err error) {
 		cr.lineBuffer = line
 		cr.column = -1
 		cr.cell = make(Cell, 0, 1)
-		cr.row = make(Row, 0, len(cr.lastRow))
+		cr.row = cr.row[:0] // reset
+		if cap(cr.row) < cr.numFields {
+			cr.row = make(Row, 0, cr.numFields)
+		}
 		cr.startToken(0)
 	} else {
 		cr.lineBuffer = append(cr.lineBuffer, line...)
