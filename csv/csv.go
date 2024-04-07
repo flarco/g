@@ -2,7 +2,11 @@ package csv
 
 import (
 	"bufio"
+	"errors"
 	"io"
+	"strings"
+
+	"github.com/flarco/g"
 )
 
 type Csv struct {
@@ -19,6 +23,7 @@ type CsvOptions struct {
 
 const (
 	StateInQuote  = iota
+	StateEscaping = iota
 	StateRead     = iota
 	StateRowEnded = iota
 )
@@ -27,7 +32,7 @@ type CsvReader struct {
 	reader     *bufio.Reader
 	state      int
 	csv        *Csv
-	lineBuffer []byte
+	lineBuffer strings.Builder
 	numFields  int
 	line       uint64
 	column     int
@@ -41,7 +46,7 @@ type Row []Cell
 type Cell []Token
 
 type Token struct {
-	start, end int
+	Start, End int
 }
 
 func NewCsv(options ...CsvOptions) *Csv {
@@ -78,11 +83,29 @@ func (c *Csv) NewReader(r io.Reader) *CsvReader {
 func (cr *CsvReader) Read() (row []string, err error) {
 	var ok bool
 	for {
-		line, _, err := cr.reader.ReadLine()
-		if err != nil {
+		line, hasMore, err := cr.reader.ReadLine()
+
+		if err == io.EOF {
+			if cr.state == StateInQuote {
+				return row, errors.New(g.F("unterminated quoted field: line %d", cr.line))
+			}
+			return row, err
+		} else if err != nil {
 			return row, err
 		}
-		row, ok, err = cr.readLine(append(line, '\n'))
+		if !hasMore {
+			line = append(line, '\n')
+		}
+		row, ok, err = cr.readLine(line)
+		// debug
+
+		// println()
+		// g.Info(string(line))
+		// g.Warn("buffer: %s", string(cr.lineBuffer))
+		// g.Warn("row: %s", g.Marshal(cr.Row()))
+		// g.Warn("cells: %s", g.Marshal(cr.row))
+		// g.Warn("token: %s", g.Marshal(cr.token))
+		// g.Warn("inQuote: %t    hasMore: %t", cr.state == StateInQuote, hasMore)
 		if err != nil {
 			return row, err
 		}
@@ -100,15 +123,15 @@ func (cr *CsvReader) Read() (row []string, err error) {
 }
 
 func (cr *CsvReader) startToken(startColumn int) {
-	cr.token = Token{start: startColumn}
+	cr.token = Token{Start: startColumn}
 }
 
 func (cr *CsvReader) endToken(endColumn int) {
-	cr.token.end = endColumn
-	if cr.token.start != -1 && cr.token.end > cr.token.start {
+	cr.token.End = endColumn
+	if cr.token.Start != -1 && cr.token.End >= cr.token.Start {
 		cr.cell = append(cr.cell, cr.token)
 	}
-	cr.token = Token{start: -1, end: -1}
+	cr.token = Token{Start: -1, End: -1}
 }
 
 func (cr *CsvReader) endCell() {
@@ -119,10 +142,11 @@ func (cr *CsvReader) endCell() {
 }
 
 func (cr *CsvReader) readLine(line []byte) (row []string, ok bool, err error) {
-
+	// var s strings.Builder
 	if cr.state == StateRead || cr.state == StateRowEnded {
 		cr.state = StateRead
-		cr.lineBuffer = line
+		cr.lineBuffer.Reset()
+		cr.lineBuffer.Write(line)
 		cr.column = -1
 		cr.cell = make(Cell, 0, 1)
 		cr.row = cr.row[:0] // reset
@@ -131,31 +155,34 @@ func (cr *CsvReader) readLine(line []byte) (row []string, ok bool, err error) {
 		}
 		cr.startToken(0)
 	} else {
-		cr.lineBuffer = append(cr.lineBuffer, line...)
+		cr.lineBuffer.Write(line)
 	}
 
 	for i, char := range line {
 		cr.column++
 
 		// if quote is escaped, continue, handled next loop
-		if char == cr.csv.options.Escape && cr.state == StateInQuote && len(line) > i+1 && line[i+1] == cr.csv.options.Quote {
+		if cr.state == StateInQuote &&
+			char == cr.csv.options.Escape &&
+			len(line) > i+1 &&
+			line[i+1] == cr.csv.options.Quote {
+			cr.state = StateEscaping
 			continue
 		}
 
 		switch char {
 		case cr.csv.options.Quote:
-			if cr.state == StateInQuote {
-				if i > 0 && line[i-1] == cr.csv.options.Escape {
-					// if is escaped, new token, same cell
-					cr.endToken(cr.column - 1)
-					cr.startToken(cr.column)
-				} else {
-					// new cell
-					cr.endToken(cr.column)
-					cr.endCell()
-					cr.state = StateRead
-				}
-			} else {
+			if cr.state == StateEscaping {
+				// if is escaped, new token, same cell
+				cr.endToken(cr.column - 1)
+				cr.startToken(cr.column)
+				cr.state = StateInQuote
+			} else if cr.state == StateInQuote {
+				// new cell
+				cr.endToken(cr.column)
+				cr.endCell()
+				cr.state = StateRead
+			} else if i == 0 || line[i-1] == cr.csv.options.Delimiter {
 				cr.state = StateInQuote
 				cr.endToken(cr.column)
 				cr.startToken(cr.column + 1)
@@ -207,12 +234,12 @@ func (cr *CsvReader) Row() (row []string) {
 	// }()
 
 	// converts once to reduce allocations
-	lineBuffer := string(cr.lineBuffer)
+	lineBuffer := cr.lineBuffer.String()
 
 	row = make([]string, len(cr.row))
 	for i, cell = range cr.row {
 		for _, token = range cell {
-			row[i] = row[i] + lineBuffer[token.start:token.end]
+			row[i] = row[i] + lineBuffer[token.Start:token.End]
 		}
 	}
 	return
