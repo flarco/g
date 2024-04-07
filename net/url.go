@@ -4,7 +4,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/flarco/g"
 	"github.com/spf13/cast"
 )
 
@@ -22,7 +21,6 @@ func NewURL(urlStr string) (*URL, error) {
 
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		err = g.Error(err, "invalid URL")
 		return &URL{OrigURL: urlStr}, err
 	}
 	return &URL{U: u, OrigURL: urlStr}, nil
