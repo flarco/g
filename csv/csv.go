@@ -9,6 +9,10 @@ import (
 	"github.com/flarco/g"
 )
 
+type CsvReaderLike interface {
+	Read() (row []string, err error)
+}
+
 type Csv struct {
 	options CsvOptions
 }
@@ -101,7 +105,7 @@ func (cr *CsvReader) Read() (row []string, err error) {
 
 		// println()
 		// g.Info(string(line))
-		// g.Warn("buffer: %s", string(cr.lineBuffer))
+		// g.Warn("buffer: %s", cr.lineBuffer.String())
 		// g.Warn("row: %s", g.Marshal(cr.Row()))
 		// g.Warn("cells: %s", g.Marshal(cr.row))
 		// g.Warn("token: %s", g.Marshal(cr.token))
@@ -139,6 +143,24 @@ func (cr *CsvReader) endCell() {
 		cr.row = append(cr.row, cr.cell)
 	}
 	cr.cell = make(Cell, 0, 1)
+}
+
+// ReadAll reads all the remaining records from r.
+// Each record is a slice of fields.
+// A successful call returns err == nil, not err == io.EOF. Because ReadAll is
+// defined to read until EOF, it does not treat end of file as an error to be
+// reported.
+func (cr *CsvReader) ReadAll() (records [][]string, err error) {
+	for {
+		record, err := cr.Read()
+		if err == io.EOF {
+			return records, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, record)
+	}
 }
 
 func (cr *CsvReader) readLine(line []byte) (row []string, ok bool, err error) {
