@@ -305,6 +305,10 @@ func (c *CliSC) ListWhere() map[string]interface{} {
 
 // UsedSC returns the name of the used subcommand
 func (c *CliSC) UsedSC() string {
+	if c == nil || c.Sc == nil {
+		return ""
+	}
+
 	for _, sc2 := range c.Sc.Subcommands {
 		if !sc2.Used {
 			continue
