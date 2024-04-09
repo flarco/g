@@ -30,28 +30,28 @@ type SizedWaitGroup struct {
 }
 
 // NewContext creates a new context
-func NewContext(parentCtx context.Context, concurencyLimits ...int) Context {
-	concurencyLimit := runtime.NumCPU()
-	if len(concurencyLimits) > 0 {
-		concurencyLimit = concurencyLimits[0]
-	} else if os.Getenv("CONCURENCY_LIMIT") != "" {
-		concurencyLimit = cast.ToInt(os.Getenv("CONCURENCY_LIMIT"))
+func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
+	concurrencyLimit := runtime.NumCPU()
+	if len(concurrencyLimits) > 0 {
+		concurrencyLimit = concurrencyLimits[0]
+	} else if os.Getenv("CONCURRENCY_LIMIT") != "" {
+		concurrencyLimit = cast.ToInt(os.Getenv("CONCURRENCY_LIMIT"))
 	}
 	ctx, cancel := context.WithCancel(parentCtx)
 	wg := SizedWaitGroup{
-		Limit: concurencyLimit,
-		Read:  sizedwaitgroup.New(concurencyLimit),
-		Write: sizedwaitgroup.New(concurencyLimit),
+		Limit: concurrencyLimit,
+		Read:  sizedwaitgroup.New(concurrencyLimit),
+		Write: sizedwaitgroup.New(concurrencyLimit),
 	}
 	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any)}
 }
 
-// SetConcurencyLimit sets the concurency limit
-func (c *Context) SetConcurencyLimit(concurencyLimit int) {
+// SetConcurrencyLimit sets the concurrency limit
+func (c *Context) SetConcurrencyLimit(concurrencyLimit int) {
 	c.Wg = SizedWaitGroup{
-		Limit: concurencyLimit,
-		Read:  sizedwaitgroup.New(concurencyLimit),
-		Write: sizedwaitgroup.New(concurencyLimit),
+		Limit: concurrencyLimit,
+		Read:  sizedwaitgroup.New(concurrencyLimit),
+		Write: sizedwaitgroup.New(concurrencyLimit),
 	}
 }
 
