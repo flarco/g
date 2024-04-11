@@ -556,6 +556,12 @@ func SentryInit() {
 	sentry.Init(sentryOptions)
 }
 
+// SentryClear clears the events
+func SentryClear() {
+	sentryEvents = []*SentryEvent{}
+}
+
+// SentryFlush submit the events to sentry server
 func SentryFlush(timeout time.Duration) {
 	hub := sentry.CurrentHub()
 	client := hub.Client()
