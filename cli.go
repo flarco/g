@@ -1,6 +1,7 @@
 package g
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/integrii/flaggy"
@@ -46,6 +47,7 @@ type Flag struct {
 // Add adds to the main CLI array
 func (c *CliSC) Add() *CliSC {
 	CliArr = append(CliArr, c)
+	sort.Slice(CliArr, func(i, j int) bool { return CliArr[i].Name < CliArr[j].Name })
 	return c
 }
 
