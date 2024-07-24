@@ -37,7 +37,7 @@ type Proc struct {
 	Env                        map[string]string
 	Err                        error
 	Cmd                        *exec.Cmd
-	Workdir                    string
+	WorkDir                    string
 	HideCmdInErr               bool
 	Print                      bool
 	Stderr, Stdout, Combined   bytes.Buffer
@@ -100,7 +100,7 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 		return
 	}
 	p.Env = s.Env
-	p.Workdir = s.Workdir
+	p.WorkDir = s.Workdir
 	p.scanner = s.scanner
 
 	err = p.Run()
@@ -125,7 +125,7 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 	sepStr := g.F(
 		"%s %s",
 		strings.Repeat("#", 5),
-		p.CmdStr(),
+		p.String(),
 	)
 
 	// replace alias value with alias key in messages
@@ -168,6 +168,18 @@ func NewProc(bin string, args ...string) (p *Proc, err error) {
 	return
 }
 
+// String returns the command as a string
+func (p *Proc) String() string {
+	parts := append([]string{p.Bin}, p.Args...)
+	for _, a := range p.Args {
+		if strings.Contains(a, `"`) {
+			a = `"` + strings.ReplaceAll(a, `"`, `""`) + `"`
+		}
+		parts = append(parts, a)
+	}
+	return strings.Join(parts, " ")
+}
+
 // ExecutableFound returns true if the executable is found
 func (p *Proc) ExecutableFound() bool {
 	_, err := exec.LookPath(p.Bin)
@@ -208,7 +220,7 @@ func (p *Proc) Start(args ...string) (err error) {
 	p.exited = make(chan struct{})
 
 	p.Cmd = exec.Command(p.Bin, p.Args...)
-	p.Cmd.Dir = p.Workdir
+	p.Cmd.Dir = p.WorkDir
 	if p.Env != nil {
 		p.Cmd.Env = g.MapToKVArr(p.Env)
 	}
@@ -235,10 +247,10 @@ func (p *Proc) Start(args ...string) (err error) {
 		}
 	}
 
-	g.Trace("Proc command -> %s", p.CmdStr())
+	g.Trace("Proc command -> %s", p.String())
 	err = p.Cmd.Start()
 	if err != nil {
-		err = g.Error(err, p.CmdErrorText())
+		return g.Error(err, p.CmdErrorText())
 	}
 
 	p.Pid = p.Cmd.Process.Pid
@@ -383,11 +395,6 @@ func (p *Proc) Run(args ...string) (err error) {
 	return
 }
 
-// CmdStr returns the command string
-func (p *Proc) CmdStr() string {
-	return strings.Join(append([]string{p.Bin}, p.Args...), " ")
-}
-
 // CmdErrorText returns the command error text
 func (p *Proc) CmdErrorText() string {
 	if p.HideCmdInErr {
@@ -395,7 +402,7 @@ func (p *Proc) CmdErrorText() string {
 	}
 	return fmt.Sprintf(
 		"Proc command -> %s\n%s\n%s",
-		p.CmdStr(), p.Stderr.String(), p.Stdout.String(),
+		p.String(), p.Stderr.String(), p.Stdout.String(),
 	)
 }
 
