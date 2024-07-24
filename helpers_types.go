@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/flarco/g/sizedwaitgroup"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/spf13/cast"
 )
 
@@ -20,6 +21,7 @@ type Context struct {
 	Mux      *sync.Mutex
 	LockChn  chan struct{}
 	MsgChan  chan map[string]any
+	Map      cmap.ConcurrentMap[string, any]
 }
 
 // SizedWaitGroup with separate wait groups for read & write
@@ -43,7 +45,7 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
 		Read:  sizedwaitgroup.New(concurrencyLimit),
 		Write: sizedwaitgroup.New(concurrencyLimit),
 	}
-	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any)}
+	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any), Map: cmap.New[any]()}
 }
 
 // SetConcurrencyLimit sets the concurrency limit
