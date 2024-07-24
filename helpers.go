@@ -7,7 +7,6 @@ import (
 	"database/sql/driver"
 	"encoding/hex"
 	"fmt"
-	"html/template"
 	"io"
 	"math"
 	"net"
@@ -16,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
