@@ -632,8 +632,18 @@ func Int(v int) *int {
 	return &v
 }
 
+// UInt returns a pointer to the uint value passed in.
+func UInt(v uint) *uint {
+	return &v
+}
+
 // Int64 returns a pointer to the int64 value passed in.
 func Int64(v int64) *int64 {
+	return &v
+}
+
+// UInt64 returns a pointer to the uint64 value passed in.
+func UInt64(v uint64) *uint64 {
 	return &v
 }
 
