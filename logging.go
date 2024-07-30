@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -18,14 +17,9 @@ import (
 
 // LogHook is a hook to be perform at the specified level
 type LogHook struct {
-	Level    zerolog.Level
-	Send     func(t string, a ...interface{})
-	batch    [][]interface{}
-	labels   map[string]string
-	queue    chan lokiLine
-	lastSent time.Time
-	mux      sync.Mutex
-	ticker   *time.Ticker
+	Level zerolog.Level
+	Send  func(level zerolog.Level, t string, a ...interface{})
+	Func  func(*LogLine)
 }
 
 const (
@@ -96,8 +90,40 @@ func SetLogLevel(level Level) {
 	LogLevel = &level
 }
 
+type LogLine struct {
+	Time  time.Time     `json:"time,omitempty"`
+	Level zerolog.Level `json:"level,omitempty"`
+	Text  string        `json:"text,omitempty"`
+	Args  []any         `json:"args,omitempty"`
+}
+
+func (ll *LogLine) Line() string {
+	// construct log line like zerolog
+	var timeText, levelPrefix string
+
+	switch ll.Level {
+	case zerolog.TraceLevel:
+		levelPrefix = "\x1b[35mTRC\x1b[0m "
+	case zerolog.DebugLevel:
+		levelPrefix = "\x1b[33mDBG\x1b[0m "
+	case zerolog.InfoLevel:
+		levelPrefix = "\x1b[32mINF\x1b[0m "
+	case zerolog.WarnLevel:
+		levelPrefix = "\x1b[31mWRN\x1b[0m "
+	}
+
+	if !ll.Time.IsZero() {
+		timeText = F(
+			"\x1b[90m%s\x1b[0m ",
+			ll.Time.Format("2006-01-02 15:04:05"),
+		)
+	}
+
+	return F(timeText+levelPrefix+ll.Text, ll.Args...)
+}
+
 // NewLogHook return a new log hook
-func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
+func NewLogHook(level Level, f func(*LogLine)) *LogHook {
 	zLevel := zerolog.InfoLevel
 	switch level {
 	case TraceLevel:
@@ -107,15 +133,10 @@ func NewLogHook(level Level, doFunc func(t string, a ...interface{})) *LogHook {
 	case WarnLevel:
 		zLevel = zerolog.WarnLevel
 	}
-	if doFunc == nil {
-		doFunc = func(t string, a ...interface{}) {}
-	}
+
 	return &LogHook{
-		Level:  zLevel,
-		Send:   doFunc,
-		queue:  make(chan lokiLine, 100000),
-		batch:  [][]interface{}{},
-		labels: map[string]string{},
+		Level: zLevel,
+		Func:  f,
 	}
 }
 
@@ -283,9 +304,9 @@ func Debug(text string, args ...interface{}) {
 
 // DebugLow : print text in debug low level
 func DebugLow(text string, args ...interface{}) {
+	args = addCaller(args)
+	doHooks(zerolog.DebugLevel, text, args)
 	if IsDebugLow() {
-		args = addCaller(args)
-		doHooks(zerolog.DebugLevel, text, args)
 		doLog(ZLogErr.Debug(), text, args)
 	}
 }
@@ -298,9 +319,13 @@ func Info(text string, args ...interface{}) {
 
 func doHooks(level zerolog.Level, text string, args []interface{}) {
 	for _, hook := range LogHooks {
-		if zerolog.GlobalLevel() >= hook.Level && hook.Send != nil {
-			args = append(args, M("level", level.String()))
-			go hook.Send(text, args...)
+		if level >= hook.Level && hook.Func != nil {
+			hook.Func(&LogLine{
+				Time:  time.Now(),
+				Level: level,
+				Text:  text,
+				Args:  args,
+			})
 		}
 	}
 }
