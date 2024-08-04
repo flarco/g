@@ -11,6 +11,8 @@ import (
 	"math"
 	"net"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -719,4 +721,40 @@ func DurationString(duration time.Duration) (d string) {
 	}
 
 	return F("%dy %dd", years, days%365)
+}
+
+// the SHA-1 hash of the very first commit in a Git repository
+func GetRootCommit(dirPath string) (rootCommit string) {
+	// get first sha
+	cmd := exec.Command("git", "rev-list", "--max-parents=0", "HEAD")
+	cmd.Dir = dirPath
+	out, err := cmd.Output()
+	if err == nil {
+		// in case of multiple root commits, take first line
+		rootCommit = strings.TrimSpace(strings.Split(strings.TrimSpace(string(out)), "\n")[0])
+	}
+	return
+}
+
+// the root folder of a Git repository
+func GetRootFolder(startDir string) (string, error) {
+	dir := startDir
+
+	for {
+		// Check if the .git directory exists in the current directory
+		gitPath := filepath.Join(dir, ".git")
+		if _, err := os.Stat(gitPath); err == nil {
+			// Found the .git directory, return the current directory as the Git root
+			return dir, nil
+		}
+
+		// Move to the parent directory
+		parentDir := filepath.Dir(dir)
+		if parentDir == dir {
+			// Reached the root of the filesystem without finding a .git directory
+			return "", fmt.Errorf(".git directory not found")
+		}
+
+		dir = parentDir
+	}
 }

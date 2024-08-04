@@ -1,6 +1,7 @@
 package g
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -28,6 +29,8 @@ type ErrType struct {
 	MsgStack    []string // addition details for error context
 	CallerStack []string // the caller stack
 	Position    int      // the position in the array stack (0 is first)
+	OrigErr     error    // the original error
+	OrigErrVal  string   // the original error value
 }
 
 type ErrorInterface interface {
@@ -177,15 +180,18 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 	Position := 0
 
 	errPrev := ErrType{}
+	var origErr error
 	switch et := e.(type) {
 	case *ErrType:
 		Err = et.Err
+		origErr = et.OrigErr
 		MsgStack = append(et.MsgStack, MsgStack...)
 		CallerStack = et.CallerStack
 		Position = et.Position + 1
 	case string:
 		if e0 := json.Unmarshal([]byte(et), &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
 			Err = errPrev.Err
+			origErr = errPrev.OrigErr
 			MsgStack = append(errPrev.MsgStack, MsgStack...)
 			Position = errPrev.Position + 1
 			if CallerStack[0] == errPrev.CallerStack[0] {
@@ -196,10 +202,12 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		} else {
 			MsgStack = []string{}
 			Err = ArgsErrMsg(append([]any{et}, args...)...)
+			origErr = errors.New(Err)
 		}
 	default:
 		if e0 := JSONConvert(e, &errPrev); e0 == nil && len(errPrev.CallerStack) != 0 { // compatible with original flarco/g.Error
 			Err = errPrev.Err
+			origErr = errPrev.OrigErr
 			MsgStack = append(errPrev.MsgStack, MsgStack...)
 			Position = errPrev.Position + 1
 			if CallerStack[0] == errPrev.CallerStack[0] {
@@ -211,12 +219,14 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 			MsgStack = []string{}
 			switch et := e.(type) {
 			case error:
+				origErr = et
 				Err = et.Error()
 				if len(args) > 0 {
 					MsgStack = []string{ArgsErrMsg(args...)}
 				}
 			default:
 				Err = ArgsErrMsg(append([]any{e}, args...)...)
+				origErr = errors.New(Err)
 			}
 		}
 	}
@@ -226,6 +236,7 @@ func NewError(levelsUp int, e interface{}, args ...interface{}) error {
 		MsgStack:    MsgStack,
 		CallerStack: CallerStack,
 		Position:    Position,
+		OrigErr:     origErr,
 	}
 
 	isErrGroup := false
