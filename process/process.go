@@ -170,7 +170,7 @@ func NewProc(bin string, args ...string) (p *Proc, err error) {
 
 // String returns the command as a string
 func (p *Proc) String() string {
-	parts := append([]string{p.Bin}, p.Args...)
+	parts := []string{p.Bin}
 	for _, a := range p.Args {
 		if strings.Contains(a, `"`) {
 			a = `"` + strings.ReplaceAll(a, `"`, `""`) + `"`
