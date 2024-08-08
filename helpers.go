@@ -1,17 +1,21 @@
 package g
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"crypto/md5"
 	"database/sql/driver"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -757,4 +761,59 @@ func GetRootFolder(startDir string) (string, error) {
 
 		dir = parentDir
 	}
+}
+
+func ExtractTarGz(filePath, outFolder string) (err error) {
+	gzipStream, err := os.Open(filePath)
+	if err != nil {
+		return Error(err, "could not open file")
+	}
+	uncompressedStream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		log.Fatal("ExtractTarGz: NewReader failed")
+	}
+
+	tarReader := tar.NewReader(uncompressedStream)
+
+	for {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatalf("ExtractTarGz: Next() failed: %s", err.Error())
+			return Error(
+				err,
+				"ExtractTarGz: Next() failed",
+				header.Typeflag,
+				header.Name)
+		}
+
+		outPath := path.Join(outFolder, header.Name)
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.Mkdir(outPath, 0755); err != nil {
+				log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
+			}
+		case tar.TypeReg:
+			outFile, err := os.Create(outPath)
+			if err != nil {
+				log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
+			}
+			outFile.Close()
+
+		default:
+			return Error(
+				"ExtractTarGz: uknown type: %s in %s",
+				header.Typeflag,
+				header.Name)
+		}
+	}
+
+	return nil
 }
