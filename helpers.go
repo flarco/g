@@ -820,7 +820,7 @@ func ExtractTarGz(filePath, outFolder string) (err error) {
 
 // os.Getenv with a default value
 func Getenv(key string, def ...string) string {
-	if val := os.Getenv("MASTER_FRONTEND_DEV_URL"); val != "" {
+	if val := os.Getenv(key); val != "" {
 		return val
 	}
 	if len(def) > 0 {
