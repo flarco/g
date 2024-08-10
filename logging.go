@@ -317,6 +317,12 @@ func Info(text string, args ...interface{}) {
 	doLog(ZLogErr.Info(), text, args)
 }
 
+// Err : print text in error level
+func Err(text string, args ...interface{}) {
+	doHooks(zerolog.ErrorLevel, text, args)
+	doLog(ZLogErr.Error(), text, args)
+}
+
 func doHooks(level zerolog.Level, text string, args []interface{}) {
 	for _, hook := range LogHooks {
 		if level >= hook.Level && hook.Func != nil {

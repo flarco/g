@@ -14,14 +14,15 @@ import (
 
 // Context is to manage context
 type Context struct {
-	Ctx      context.Context
-	Cancel   context.CancelFunc
-	ErrGroup ErrorGroup
-	Wg       SizedWaitGroup
-	Mux      *sync.Mutex
-	LockChn  chan struct{}
-	MsgChan  chan map[string]any
-	Map      cmap.ConcurrentMap[string, any]
+	Ctx      context.Context     `json:"-"`
+	Cancel   context.CancelFunc  `json:"-"`
+	ErrGroup ErrorGroup          `json:"-"`
+	Wg       SizedWaitGroup      `json:"-"`
+	Mux      *sync.Mutex         `json:"-"`
+	LockChn  chan struct{}       `json:"-"`
+	MsgChan  chan map[string]any `json:"-"`
+
+	Map cmap.ConcurrentMap[string, any] `json:"map"`
 }
 
 // SizedWaitGroup with separate wait groups for read & write
@@ -47,6 +48,21 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
 	}
 	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any), Map: cmap.New[any]()}
 }
+
+// Set sets key and value pairs
+func (c *Context) Set(KVs ...any) *Context {
+	for k, v := range M(KVs...) {
+		c.Map.Set(k, v)
+	}
+	return c
+}
+
+func (c *Context) Trace(text string, args ...any)        { Trace(text, append(args, c.Map.Items())...) }
+func (c *Context) Debug(text string, args ...any)        { Debug(text, append(args, c.Map.Items())...) }
+func (c *Context) Info(text string, args ...any)         { Info(text, append(args, c.Map.Items())...) }
+func (c *Context) Warn(text string, args ...any)         { Warn(text, append(args, c.Map.Items())...) }
+func (c *Context) Error(text string, args ...any)        { Err(text, append(args, c.Map.Items())...) }
+func (c *Context) LogError(E error, args ...interface{}) { LogError(E, append(args, c.Map.Items())...) }
 
 // SetConcurrencyLimit sets the concurrency limit
 func (c *Context) SetConcurrencyLimit(concurrencyLimit int) {

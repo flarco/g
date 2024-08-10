@@ -285,17 +285,21 @@ var ErrorIf = Error
 // LogError handles logging of an error, useful for reporting
 func LogError(E error, args ...interface{}) bool {
 	if E != nil {
-		msg := ArgsErrMsg(args...)
 		err, ok := E.(*ErrType)
 		if !ok {
 			err = NewError(3, E, args...).(*ErrType)
 		}
 		doHooks(zerolog.DebugLevel, err.Error(), args)
+
+		var e *zerolog.Event
 		if IsDebugLow() {
-			ZLogErr.Err(err.DebugError()).Msg(msg)
+			e = ZLogErr.Err(err.DebugError())
 		} else {
-			ZLogErr.Err(err.OriginalError()).Msg(msg) // detailed error in STDERR
+			e = ZLogErr.Err(err.OriginalError())
 		}
+		args = extractLogMapArgs(args, e)
+		msg := F(ErrMsgSimple(err), args...)
+		e.Msg(msg)
 		return true
 	}
 	return false
@@ -340,6 +344,19 @@ func ErrMsgSimple(e error) string {
 		return e.Error()
 	}
 	return err.Err
+}
+
+// ErrMsgDebug returns a debug error message
+func ErrMsgDebug(e error) string {
+	if e == nil {
+		return ""
+	}
+
+	err, ok := e.(*ErrType)
+	if !ok {
+		return e.Error()
+	}
+	return err.Debug()
 }
 
 // ErrorText returns the error text if error is not nul
