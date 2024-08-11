@@ -475,6 +475,35 @@ func (e *ErrorGroup) Err() error {
 	return fmt.Errorf(e.String())
 }
 
+func (e *ErrorGroup) ErrSimple() error {
+	if len(e.Errors) == 0 {
+		return nil
+	}
+
+	errStringsMap := map[string]struct{}{}
+	errStrings := []string{}
+	for _, err := range e.Errors {
+		if err == nil {
+			continue
+		}
+
+		errString := ""
+
+		if err2, ok := err.(*ErrType); ok {
+			errString = errString + err2.Err
+		} else {
+			errString = errString + err.Error()
+		}
+
+		if _, ok := errStringsMap[errString]; !ok {
+			errStrings = append(errStrings, errString)
+		}
+		errStringsMap[errString] = struct{}{}
+	}
+
+	return fmt.Errorf(strings.Join(errStrings, " | "))
+}
+
 func (e *ErrorGroup) String() string {
 	if len(e.Errors) == 0 {
 		return ""
