@@ -295,11 +295,10 @@ func LogError(E error, args ...interface{}) bool {
 		if IsDebugLow() {
 			e = ZLogErr.Err(err.DebugError())
 		} else {
-			e = ZLogErr.Err(err.OriginalError())
+			e = ZLogErr.Error()
 		}
-		args = extractLogMapArgs(args, e)
-		msg := F(ErrMsgSimple(err), args...)
-		e.Msg(msg)
+		extractLogMapArgs(args, e)
+		e.Msg(ErrMsgSimple(err))
 		return true
 	}
 	return false

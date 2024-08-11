@@ -74,7 +74,7 @@ func TestLogging(t *testing.T) {
 	Trace("hello world")
 	Warn("number of cpus %d", runtime.NumCPU())
 	Warn("number of cpus %d", runtime.NumCPU())
-	LogError(fmt.Errorf("new error"), "hello")
+	LogError(fmt.Errorf("new error"), M("user_name", "fritz"))
 	// Error(nil)
 	// LogFatal(Error(fmt.Errorf("new error")), "hello")
 
