@@ -49,8 +49,8 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
 	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any), Map: cmap.New[any]()}
 }
 
-// Set sets key and value pairs
-func (c *Context) Set(KVs ...any) *Context {
+// SetValues sets key and value pairs
+func (c *Context) SetValues(KVs ...any) *Context {
 	for k, v := range M(KVs...) {
 		c.Map.Set(k, v)
 	}
