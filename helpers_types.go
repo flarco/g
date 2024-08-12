@@ -46,23 +46,58 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
 		Read:  sizedwaitgroup.New(concurrencyLimit),
 		Write: sizedwaitgroup.New(concurrencyLimit),
 	}
-	return Context{Ctx: ctx, Cancel: cancel, Wg: wg, Mux: &sync.Mutex{}, ErrGroup: ErrorGroup{}, LockChn: make(chan struct{}), MsgChan: make(chan map[string]any), Map: cmap.New[any]()}
+	return Context{
+		Ctx:      ctx,
+		Cancel:   cancel,
+		Wg:       wg,
+		Mux:      &sync.Mutex{},
+		ErrGroup: ErrorGroup{},
+		LockChn:  make(chan struct{}),
+		MsgChan:  make(chan map[string]any),
+		Map:      cmap.New[any](),
+	}
 }
 
-// SetValues sets key and value pairs
-func (c *Context) SetValues(KVs ...any) *Context {
+const logKeyID = "_log_keys"
+
+// SetLogValues sets log key and value pairs
+func (c *Context) SetLogValues(KVs ...any) {
+	logKeysMap := c.getLogKeysMap()
 	for k, v := range M(KVs...) {
 		c.Map.Set(k, v)
+		logKeysMap[k] = nil
 	}
-	return c
+	c.Map.Set(logKeyID, logKeysMap)
 }
 
-func (c *Context) Trace(text string, args ...any)        { Trace(text, append(args, c.Map.Items())...) }
-func (c *Context) Debug(text string, args ...any)        { Debug(text, append(args, c.Map.Items())...) }
-func (c *Context) Info(text string, args ...any)         { Info(text, append(args, c.Map.Items())...) }
-func (c *Context) Warn(text string, args ...any)         { Warn(text, append(args, c.Map.Items())...) }
-func (c *Context) Error(text string, args ...any)        { Err(text, append(args, c.Map.Items())...) }
-func (c *Context) LogError(E error, args ...interface{}) { LogError(E, append(args, c.Map.Items())...) }
+// GetLogValues gets Log values as a map
+func (c *Context) GetLogValues() map[string]any {
+	m := M()
+	for k := range c.getLogKeysMap() {
+		m[k], _ = c.Map.Get(k)
+	}
+	return m
+}
+
+// getLogKeysMap gets log key map
+func (c *Context) getLogKeysMap() (logKeysMap map[string]any) {
+	if val, ok := c.Map.Get(logKeyID); ok {
+		logKeysMap = val.(map[string]any)
+	} else {
+		logKeysMap = map[string]any{}
+	}
+
+	return logKeysMap
+}
+
+func (c *Context) Trace(text string, args ...any) { Trace(text, append(args, c.GetLogValues())...) }
+func (c *Context) Debug(text string, args ...any) { Debug(text, append(args, c.GetLogValues())...) }
+func (c *Context) Info(text string, args ...any)  { Info(text, append(args, c.GetLogValues())...) }
+func (c *Context) Warn(text string, args ...any)  { Warn(text, append(args, c.GetLogValues())...) }
+func (c *Context) Error(text string, args ...any) { Err(text, append(args, c.GetLogValues())...) }
+func (c *Context) LogError(E error, args ...interface{}) {
+	LogError(E, append(args, c.GetLogValues())...)
+}
 
 // SetConcurrencyLimit sets the concurrency limit
 func (c *Context) SetConcurrencyLimit(concurrencyLimit int) {
