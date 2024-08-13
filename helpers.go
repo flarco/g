@@ -828,3 +828,23 @@ func Getenv(key string, def ...string) string {
 	}
 	return ""
 }
+
+// IsNil properly returns true for map nil values
+// have encountered where map[string]interface {}(nil) != nil after unmarshal
+func IsNil(val any) bool {
+	if val == nil {
+		return true
+	}
+
+	switch vt := val.(type) {
+	case map[string]any:
+		if vt == nil {
+			return true
+		}
+	case map[any]any:
+		if vt == nil {
+			return true
+		}
+	}
+	return false
+}
