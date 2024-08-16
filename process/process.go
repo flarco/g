@@ -15,6 +15,7 @@ import (
 	"time"
 
 	g "github.com/flarco/g"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cast"
 )
 
@@ -438,4 +439,24 @@ func (p *Proc) Wait() error {
 	}
 
 	return nil
+}
+
+type Parent struct {
+	PID        int      `json:"pid"`
+	Name       string   `json:"name"`
+	Executable string   `json:"executable"`
+	Arguments  []string `json:"arguments"`
+}
+
+func GetParent() (parent Parent) {
+	parent.PID = os.Getppid()
+
+	p, err := process.NewProcess(cast.ToInt32(parent.PID))
+	if err == nil {
+		parent.Name, _ = p.Name()
+		parent.Executable, _ = p.Exe()
+		parent.Arguments, _ = p.CmdlineSlice()
+	}
+
+	return
 }
