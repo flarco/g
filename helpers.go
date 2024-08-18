@@ -520,6 +520,16 @@ func In[T comparable](item T, potMatches ...T) bool {
 	return false
 }
 
+// HasPrefix returns true if `item` has prefix of a value in `potPrefixes`
+func HasPrefix(item string, potPrefixes ...string) bool {
+	for _, p := range potPrefixes {
+		if strings.HasPrefix(item, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // ChunkBy seperates into chunks
 func ChunkBy(items []string, chunkSize int) (chunks [][]string) {
 	for chunkSize < len(items) {

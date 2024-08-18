@@ -455,7 +455,11 @@ func GetParent() (parent Parent) {
 	if err == nil {
 		parent.Name, _ = p.Name()
 		parent.Executable, _ = p.Exe()
-		parent.Arguments, _ = p.CmdlineSlice()
+		args, _ := p.CmdlineSlice()
+		if len(args) > 1 && g.HasPrefix(strings.ToLower(parent.Name), "python", "node", "bash", "java", "powershell", "cmd") {
+			// get first arg
+			parent.Arguments = append(parent.Arguments, args[1])
+		}
 	}
 
 	return
