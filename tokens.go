@@ -29,6 +29,10 @@ func (t Token) IsEmpty() bool {
 	return t.Text == "" || t.Index == -1
 }
 
+func (t Token) IsNotEmpty() bool {
+	return !t.IsEmpty()
+}
+
 func (t Token) IsWhitespace() bool {
 	return isWhite(t.Text)
 }
