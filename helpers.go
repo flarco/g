@@ -839,7 +839,7 @@ func Getenv(key string, def ...string) string {
 	return ""
 }
 
-// IsNil properly returns true for map nil values
+// IsNil properly returns true for map or array nil values
 // have encountered where map[string]interface {}(nil) != nil after unmarshal
 func IsNil(val any) bool {
 	if val == nil {
@@ -853,6 +853,10 @@ func IsNil(val any) bool {
 		}
 	case map[any]any:
 		if vt == nil {
+			return true
+		}
+	case []any:
+		if len(vt) == 0 {
 			return true
 		}
 	}
