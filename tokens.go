@@ -48,6 +48,17 @@ func (t Token) IsNumeric() bool {
 	return isNumeric(t.Text)
 }
 
+// IsEnclosedWithQuotes returns true if the token is enclosed with single or double quotes.
+func (t Token) IsEnclosedWithQuotes() bool {
+	if strings.HasPrefix(t.Text, "'") && strings.HasSuffix(t.Text, "'") {
+		return true
+	}
+	if strings.HasPrefix(t.Text, `"`) && strings.HasSuffix(t.Text, `"`) {
+		return true
+	}
+	return false
+}
+
 // IsWord returns true if the token consists of word characters (alphanumeric or underscore).
 func (t Token) IsWord() bool {
 	return isWord(t.Text)
