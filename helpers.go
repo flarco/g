@@ -26,6 +26,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/cast"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -457,10 +458,25 @@ func Unmarshal(s string, objPtr interface{}) error {
 	return json.Unmarshal([]byte(s), objPtr)
 }
 
+// UnmarshalYAML unmarshals into an objPtr
+func UnmarshalYAML(s string, objPtr interface{}) error {
+	return yaml.Unmarshal([]byte(s), objPtr)
+}
+
 // UnmarshalMap unmarshals into a map of interface
 func UnmarshalMap(s string) (map[string]interface{}, error) {
 	m := M()
 	err := json.Unmarshal([]byte(s), &m)
+	if err != nil {
+		return m, err
+	}
+	return m, nil
+}
+
+// UnmarshalMap unmarshals into a map of interface
+func UnmarshalYAMLMap(s string) (map[string]interface{}, error) {
+	m := M()
+	err := yaml.Unmarshal([]byte(s), &m)
 	if err != nil {
 		return m, err
 	}
