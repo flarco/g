@@ -1,3 +1,5 @@
+// Package g provides tokenization and token manipulation utilities.
+
 package g
 
 import (
@@ -6,50 +8,57 @@ import (
 	"unicode"
 )
 
-// Token represents a group of characters
+// Token represents a group of characters in a tokenized text.
 type Token struct {
-	Text             string   `json:"text"`
-	Index            int      `json:"index"`
-	IsComment        bool     `json:"-"`
-	ParenthesisLevel int      `json:"parenthesisLevel"`
-	Position         Position `json:"position"` // start of token
+	Text             string   `json:"text"`             // The actual text content of the token
+	Index            int      `json:"index"`            // The index of the token in the token list
+	IsComment        bool     `json:"-"`                // Indicates if the token is a comment
+	ParenthesisLevel int      `json:"parenthesisLevel"` // The nesting level of parentheses at this token
+	Position         Position `json:"position"`         // The starting position of the token in the original text
 
-	previous *Token
-	next     *Token
+	previous *Token // Pointer to the previous token
+	next     *Token // Pointer to the next token
 
-	body *TokenBody
+	body *TokenBody // Pointer to the TokenBody this token belongs to
 }
 
+// Position represents the line and column number of a token in the original text.
 type Position struct {
-	Line   int `json:"line"`
-	Column int `json:"column"`
+	Line   int `json:"line"`   // The line number (1-based)
+	Column int `json:"column"` // The column number (0-based)
 }
 
+// IsEmpty returns true if the token is empty or has an invalid index.
 func (t Token) IsEmpty() bool {
 	return t.Text == "" || t.Index == -1
 }
 
+// IsNotEmpty returns true if the token is not empty and has a valid index.
 func (t Token) IsNotEmpty() bool {
 	return !t.IsEmpty()
 }
 
+// IsWhitespace returns true if the token consists only of whitespace characters.
 func (t Token) IsWhitespace() bool {
 	return isWhite(t.Text)
 }
 
+// IsNumeric returns true if the token consists only of numeric characters.
 func (t Token) IsNumeric() bool {
 	return isNumeric(t.Text)
 }
 
+// IsWord returns true if the token consists of word characters (alphanumeric or underscore).
 func (t Token) IsWord() bool {
 	return isWord(t.Text)
 }
 
+// IsOperand returns true if the token is an operand (e.g., +, -, *, /).
 func (t Token) IsOperand() bool {
 	return isOperand(t.Text)
 }
 
-// IsAlphaNumericID returns true if all chars are alphanumeric or ID quotes
+// IsAlphaNumericID returns true if all chars are alphanumeric or ID quotes.
 func (t Token) IsAlphaNumericID() bool {
 	if strings.TrimSpace(t.Text) == "" {
 		return false
@@ -59,13 +68,14 @@ func (t Token) IsAlphaNumericID() bool {
 	return len(t.Text) > 0 && !nonAlphaNumericRegex.Match([]byte(strings.TrimSpace(t.Text)))
 }
 
+// IsSingleSQLExpression returns true if the token represents a single SQL expression.
 func (t Token) IsSingleSQLExpression() bool {
 	pattern := `[^_"` + "`" + `a-zA-Z0-9:()]`
 	nonAlphaNumericRegex := *regexp.MustCompile(pattern)
 	return len(t.Text) > 0 && !nonAlphaNumericRegex.Match([]byte(strings.TrimSpace(t.Text)))
 }
 
-// Previous returns the previous `n` token relative to provided token. `n` defaults to 1
+// Previous returns the previous `n` token relative to the provided token. `n` defaults to 1.
 func (t Token) Previous(n ...int) (pt Token) {
 	N := 1
 	if len(n) > 0 {
@@ -80,7 +90,7 @@ func (t Token) Previous(n ...int) (pt Token) {
 	return pt
 }
 
-// Next returns the next `n` token relative to provided token. `n` defaults to 1
+// Next returns the next `n` token relative to the provided token. `n` defaults to 1.
 func (t Token) Next(n ...int) (nt Token) {
 	N := 1
 	if len(n) > 0 {
@@ -95,7 +105,7 @@ func (t Token) Next(n ...int) (nt Token) {
 	return nt
 }
 
-// FindNext advances until text is matched
+// FindNext advances until text is matched.
 func (t Token) FindNext(s string) (nt Token) {
 	nt = t
 	for nt.HasNext() {
@@ -109,8 +119,7 @@ func (t Token) FindNext(s string) (nt Token) {
 	return Token{Index: -1}
 }
 
-// FindNextWithinLevel advances within the specified
-// max parenthesis level until text is matched
+// FindNextWithinLevel advances within the specified max parenthesis level until text is matched.
 func (t Token) FindNextWithinLevel(s string, maxParLevel int) (nt Token) {
 	nt = t
 	for nt.HasNext() {
@@ -124,11 +133,12 @@ func (t Token) FindNextWithinLevel(s string, maxParLevel int) (nt Token) {
 	return Token{Index: -1}
 }
 
-// IsAlone returns `true` if surrounded by white space
+// IsAlone returns `true` if surrounded by white space.
 func (t Token) IsAlone() bool {
 	return t.Previous().IsWhitespace() && t.Next().IsWhitespace()
 }
 
+// NextNonWhitespace returns the next non-whitespace token.
 func (t Token) NextNonWhitespace() (nt Token) {
 	nt = t
 	for nt.HasNext() {
@@ -140,6 +150,7 @@ func (t Token) NextNonWhitespace() (nt Token) {
 	return Token{Index: -1}
 }
 
+// NextWord returns the next word token.
 func (t Token) NextWord() (nt Token) {
 	nt = t
 	for nt.HasNext() {
@@ -151,6 +162,7 @@ func (t Token) NextWord() (nt Token) {
 	return Token{Index: -1}
 }
 
+// NextWordOrID returns the next word or identifier token.
 func (t Token) NextWordOrID() (nt Token) {
 	nt = t
 	for nt.HasNext() {
@@ -162,6 +174,7 @@ func (t Token) NextWordOrID() (nt Token) {
 	return Token{Index: -1}
 }
 
+// PreviousNonWhitespace returns the previous non-whitespace token.
 func (t Token) PreviousNonWhitespace() (pt Token) {
 	pt = t
 	for pt.HasNext() {
@@ -173,18 +186,22 @@ func (t Token) PreviousNonWhitespace() (pt Token) {
 	return Token{Index: -1}
 }
 
+// HasPrevious returns true if there is a previous token.
 func (t Token) HasPrevious() bool {
 	return t.Previous().Index != -1
 }
 
+// HasNext returns true if there is a next token.
 func (t Token) HasNext() bool {
 	return t.Next().Index != -1
 }
 
+// EqualsFold compares the token text with the given string, ignoring case.
 func (t Token) EqualsFold(s string) bool {
 	return strings.EqualFold(t.Text, s)
 }
 
+// InFold checks if the token text matches any of the given values, ignoring case.
 func (t Token) InFold(vals ...string) bool {
 	for _, val := range vals {
 		if strings.EqualFold(t.Text, val) {
@@ -194,6 +211,8 @@ func (t Token) InFold(vals ...string) bool {
 	return false
 }
 
+// Select returns a slice of tokens starting from the current token and including
+// 'delta' number of tokens (positive for forward, negative for backward).
 func (t Token) Select(delta int) (nts Tokens) {
 	counter := 0
 	nts = Tokens{t}
@@ -221,6 +240,8 @@ func (t Token) Select(delta int) (nts Tokens) {
 	return nts.Recreate()
 }
 
+// SelectNonWhitespace returns a slice of non-whitespace tokens starting from the current token
+// and including 'delta' number of tokens (positive for forward, negative for backward).
 func (t Token) SelectNonWhitespace(delta int) (nts Tokens) {
 	counter := 0
 	if !t.IsWhitespace() {
@@ -254,10 +275,13 @@ func (t Token) SelectNonWhitespace(delta int) (nts Tokens) {
 	return nts.Recreate()
 }
 
+// Tokens represents a slice of Token.
 type Tokens []Token
+
+// TokenGroups represents a slice of Tokens.
 type TokenGroups []Tokens
 
-// First returns the first token
+// First returns the first token in the Tokens slice.
 func (ts Tokens) First() Token {
 	if len(ts) > 0 {
 		return ts[0]
@@ -265,6 +289,7 @@ func (ts Tokens) First() Token {
 	return Token{Index: -1}
 }
 
+// Last returns the last token in the Tokens slice.
 func (ts Tokens) Last() Token {
 	if len(ts) > 0 {
 		return ts[len(ts)-1]
@@ -272,7 +297,7 @@ func (ts Tokens) Last() Token {
 	return Token{Index: -1}
 }
 
-// Join joins the tokens to a strings
+// Join concatenates all token texts into a single string.
 func (ts Tokens) Join() string {
 	builder := strings.Builder{}
 	for _, t := range ts {
@@ -281,11 +306,12 @@ func (ts Tokens) Join() string {
 	return builder.String()
 }
 
+// IsEmpty returns true if the Tokens slice is empty.
 func (ts Tokens) IsEmpty() bool {
 	return len(ts) == 0
 }
 
-// TrimComments remove comments from the tokens
+// TrimComments removes comment tokens from the Tokens slice.
 func (ts Tokens) TrimComments() (nwTs Tokens) {
 	for _, t := range ts {
 		if !t.IsComment {
@@ -295,9 +321,8 @@ func (ts Tokens) TrimComments() (nwTs Tokens) {
 	return nwTs.Recreate()
 }
 
-// TrimParenthesis remove enclosing first/last parenthesis
+// TrimParenthesis removes enclosing first/last parenthesis tokens.
 func (ts Tokens) TrimParenthesis() (nwTs Tokens) {
-
 	doTrim := func(ts Tokens) (newTs Tokens) {
 		for i, t := range ts {
 			if In(i, 0, len(ts)-1) && t.InFold("(", ")") {
@@ -316,7 +341,7 @@ func (ts Tokens) TrimParenthesis() (nwTs Tokens) {
 	return
 }
 
-// TrimWhiteSpace excludes white space tokens at start/end
+// TrimWhiteSpace removes whitespace tokens from the start and end of the Tokens slice.
 func (ts Tokens) TrimWhiteSpace() (nwTs Tokens) {
 	// from start
 	foundNonWhiteSpace := -1
@@ -342,7 +367,7 @@ func (ts Tokens) TrimWhiteSpace() (nwTs Tokens) {
 	return nwTs[:foundNonWhiteSpace+1].Recreate()
 }
 
-// Recreate rebuild the tokens, removing the external body pointers
+// Recreate rebuilds the tokens, removing the external body pointers.
 func (ts Tokens) Recreate() (nwTs Tokens) {
 	body := TokenBody{}
 	for _, tok := range ts {
@@ -351,6 +376,7 @@ func (ts Tokens) Recreate() (nwTs Tokens) {
 	return body.Tokens
 }
 
+// StringSlice returns a slice of token texts.
 func (ts Tokens) StringSlice() []string {
 	ss := make([]string, len(ts))
 	for i := range ts {
@@ -359,15 +385,18 @@ func (ts Tokens) StringSlice() []string {
 	return ss
 }
 
+// Body returns the TokenBody associated with the Tokens.
 func (ts Tokens) Body() *TokenBody {
 	return ts.First().body
 }
 
+// TokenBody represents a collection of tokens and their base parenthesis level.
 type TokenBody struct {
 	Tokens               Tokens
 	baseParenthesisLevel int
 }
 
+// AddToken adds a new token to the TokenBody.
 func (tb *TokenBody) AddToken(t Token) Token {
 	t.previous = nil
 	t.next = nil
@@ -381,34 +410,19 @@ func (tb *TokenBody) AddToken(t Token) Token {
 	return t
 }
 
-type TokenMapper struct {
-	IndexMap         map[int]Token    `json:"indexMap"`
-	LineColumnMap    map[string]int   `json:"lineColumnMap"`    // line-col to index
-	KeyIndexRangeMap map[string][]int `json:"keyIndexRangeMap"` // key to index range
-}
-
-func CharsToMap(tokenChars string) map[string]int {
-	tokenCharsMap := map[string]int{}
-	for i := range tokenChars {
-		tokenCharsMap[string(tokenChars[i])] = i
-	}
-	return tokenCharsMap
-}
-
 var (
 	nonWordRegex = *regexp.MustCompile(`[^_a-zA-Z0-9]`)
 )
 
+// isOperand checks if a string consists only of operand characters.
 func isOperand(s string) bool {
-	// return len(s) > 0 && !nonOperandRegex.Match([]byte(s))
-
 	if len(s) == 0 {
 		return false
 	}
 
 	for _, c := range s {
 		switch c {
-		case ',', '+', '-', '*', '/', '=', '<', '>', '!', '~':
+		case '.', ',', '+', '-', '*', '/', '=', '<', '>', '!', '~':
 		case ';':
 		default:
 			return false
@@ -418,9 +432,8 @@ func isOperand(s string) bool {
 	return true
 }
 
+// isWhite checks if a string consists only of whitespace characters.
 func isWhite(s string) bool {
-	// return len(s) > 0 && !nonWhiteSpaceRegex.Match([]byte(s))
-
 	if len(s) == 0 {
 		return false
 	}
@@ -433,6 +446,7 @@ func isWhite(s string) bool {
 	return true
 }
 
+// isNonWord checks if a string contains any non-word characters.
 func isNonWord(s string) bool {
 	return len(s) > 0 && nonWordRegex.Match([]byte(s))
 }
