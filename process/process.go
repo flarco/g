@@ -25,7 +25,7 @@ type Session struct {
 	Alias          map[string]string
 	Env            map[string]string
 	Workdir        string
-	Print          bool
+	Capture, Print bool
 	Stderr, Stdout string
 	scanner        *ScanConfig
 	mux            sync.Mutex
@@ -33,25 +33,25 @@ type Session struct {
 
 // Proc is a command background process
 type Proc struct {
-	Bin                        string
-	Args                       []string
-	Env                        map[string]string
-	Err                        error
-	Cmd                        *exec.Cmd
-	WorkDir                    string
-	HideCmdInErr               bool
-	Print                      bool
-	Stderr, Stdout, Combined   bytes.Buffer
-	StderrReader, StdoutReader io.Reader
-	StdinWriter                io.Writer
-	StdinOverride              io.Reader
-	Pid                        int
-	Nice                       int
-	Context                    *g.Context
-	Done                       chan struct{} // finished with scanner
-	exited                     chan struct{} // process exited
-	scanner                    *ScanConfig
-	printMux                   sync.Mutex
+	Bin                          string
+	Args                         []string
+	Env                          map[string]string
+	Err                          error
+	Cmd                          *exec.Cmd
+	WorkDir                      string
+	HideCmdInErr                 bool
+	Capture, Print               bool
+	Stderr, Stdout, Combined     bytes.Buffer
+	StdinOverride                io.Reader
+	StderrReader, StdoutReader   io.ReadCloser
+	stderrScanner, stdoutScanner *bufio.Scanner
+	stdinWriter                  io.Writer
+	Pid                          int
+	Nice                         int
+	Context                      *g.Context
+	Done                         chan struct{} // finished with scanner
+	scanner                      *ScanConfig
+	printMux                     sync.Mutex
 }
 
 type ScanConfig struct {
@@ -103,6 +103,8 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 	p.Env = s.Env
 	p.WorkDir = s.Workdir
 	p.scanner = s.scanner
+	p.Capture = s.Capture
+	p.Print = s.Print
 
 	err = p.Run()
 	if err != nil {
@@ -147,8 +149,11 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 		s.Stderr = s.Stderr + "\n" + sepStr
 	}
 
-	s.Stdout = s.Stdout + "\n" + p.Stdout.String()
-	s.Stderr = s.Stderr + "\n" + p.Stderr.String()
+	stdout = p.Stdout.String()
+	stderr = p.Stderr.String()
+
+	s.Stdout = s.Stdout + "\n" + stdout
+	s.Stderr = s.Stderr + "\n" + stderr
 
 	return
 }
@@ -156,11 +161,10 @@ func (s *Session) RunOutput(bin string, args ...string) (stdout, stderr string, 
 // NewProc creates a new process and returns it
 func NewProc(bin string, args ...string) (p *Proc, err error) {
 	p = &Proc{
-		Bin:    bin,
-		Args:   args,
-		Done:   make(chan struct{}),
-		exited: make(chan struct{}),
-		Env:    map[string]string{},
+		Bin:  bin,
+		Args: args,
+		Done: make(chan struct{}),
+		Env:  map[string]string{},
 	}
 
 	if !p.ExecutableFound() {
@@ -193,7 +197,7 @@ func (p *Proc) SetArgs(args ...string) {
 }
 
 func (p *Proc) Close() (err error) {
-	wc, ok := p.StdinWriter.(io.WriteCloser)
+	wc, ok := p.stdinWriter.(io.WriteCloser)
 	if ok {
 		err = wc.Close()
 		if err != nil {
@@ -218,7 +222,6 @@ func (p *Proc) Start(args ...string) (err error) {
 
 	// reset channels
 	p.Done = make(chan struct{})
-	p.exited = make(chan struct{})
 
 	p.Cmd = exec.Command(p.Bin, p.Args...)
 	p.Cmd.Dir = p.WorkDir
@@ -239,10 +242,16 @@ func (p *Proc) Start(args ...string) (err error) {
 		return g.Error(err)
 	}
 
+	p.stderrScanner = bufio.NewScanner(p.StderrReader)
+	p.stderrScanner.Split(bufio.ScanLines)
+
+	p.stdoutScanner = bufio.NewScanner(p.StdoutReader)
+	p.stdoutScanner.Split(bufio.ScanLines)
+
 	if p.StdinOverride != nil {
 		p.Cmd.Stdin = p.StdinOverride
 	} else {
-		p.StdinWriter, err = p.Cmd.StdinPipe()
+		p.stdinWriter, err = p.Cmd.StdinPipe()
 		if err != nil {
 			return g.Error(err)
 		}
@@ -294,88 +303,54 @@ func (p *Proc) SetScanner(scanFunc func(stderr bool, text string)) {
 
 func (p *Proc) scanAndWait() {
 
-	readLine := func(r *bufio.Reader, stderr bool) error {
-		text, err := r.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		text = strings.TrimSuffix(text, "\n")
-
-		p.printMux.Lock()
-		if p.Print {
-			if stderr {
-				fmt.Fprintf(os.Stderr, "%s\n", text)
-			} else {
-				fmt.Fprintf(os.Stdout, "%s\n", text)
-			}
-		}
-		if p.scanner != nil {
-			p.scanner.scanFunc(stderr, text)
-		}
-		p.printMux.Unlock()
-
-		return nil
-	}
-
-	scanLoop := func(exited bool) {
-		stderrTo := make(chan bool)
-		stdoutTo := make(chan bool)
-
-		var t *time.Timer
-		if exited {
-			t = time.NewTimer(time.Second)
-		} else {
-			t = time.NewTimer(999999 * time.Hour) // infinite if not exited
-		}
-		stdoutReader := bufio.NewReader(p.StdoutReader)
-		stderrReader := bufio.NewReader(p.StderrReader)
-
-		readStdErr := func() {
-			var err error
-			for err == nil {
-				err = readLine(stderrReader, true)
-			}
-			stderrTo <- true
-		}
-
-		readStdOut := func() {
-			var err error
-			for err == nil {
-				err = readLine(stdoutReader, false)
-			}
-			stdoutTo <- true
-		}
-
-		go readStdErr()
-		go readStdOut()
-
-		for {
-			select {
-			case <-t.C:
-				return
-			case <-p.exited:
-				return
-			case <-stderrTo:
-				go readStdErr()
-			case <-stdoutTo:
-				go readStdOut()
-			}
-		}
-	}
+	scannerExitChan := make(chan bool)
 
 	go func() {
-		err := p.Cmd.Wait()
-		if err != nil {
-			p.Err = g.Error(err, p.CmdErrorText())
+		for p.stderrScanner.Scan() {
+			line := p.stderrScanner.Text() + "\n"
+			p.printMux.Lock()
+			if p.Print {
+				fmt.Fprintf(os.Stderr, "%s", line)
+			}
+			if p.Capture {
+				p.Stderr.WriteString(line)
+				p.Combined.WriteString(line)
+			}
+			if p.scanner != nil {
+				p.scanner.scanFunc(true, line)
+			}
+			p.printMux.Unlock()
 		}
-		close(p.exited)
+		scannerExitChan <- true
 	}()
 
-	scanLoop(false)
+	go func() {
+		for p.stdoutScanner.Scan() {
+			line := p.stdoutScanner.Text() + "\n"
+			p.printMux.Lock()
+			if p.Print {
+				fmt.Fprintf(os.Stdout, "%s", line)
+			}
+			if p.Capture {
+				p.Stdout.WriteString(line)
+				p.Combined.WriteString(line)
+			}
+			if p.scanner != nil {
+				p.scanner.scanFunc(false, line)
+			}
+			p.printMux.Unlock()
+		}
+		scannerExitChan <- true
+	}()
 
-	<-p.exited
+	err := p.Cmd.Wait()
+	if err != nil {
+		p.Err = g.Error(err, p.CmdErrorText())
+	}
 
-	scanLoop(true) // drain remaining
+	// wait for scanners to exit
+	<-scannerExitChan
+	<-scannerExitChan
 
 	close(p.Done)
 }
@@ -405,26 +380,6 @@ func (p *Proc) CmdErrorText() string {
 		"Proc command -> %s\n%s\n%s",
 		p.String(), p.Stderr.String(), p.Stdout.String(),
 	)
-}
-
-// StdoutScannerLines returns a scanner for stdout
-func (p *Proc) StdoutScannerLines() (scanner *bufio.Scanner) {
-	if p.StdoutReader == nil {
-		return
-	}
-	scanner = bufio.NewScanner(p.StdoutReader)
-	scanner.Split(bufio.ScanLines)
-	return scanner
-}
-
-// StderrScannerLines returns a scanner for stderr
-func (p *Proc) StderrScannerLines() (scanner *bufio.Scanner) {
-	if p.StderrReader == nil {
-		return
-	}
-	scanner = bufio.NewScanner(p.StderrReader)
-	scanner.Split(bufio.ScanLines)
-	return scanner
 }
 
 // Wait waits for the process to end
