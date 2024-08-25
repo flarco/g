@@ -276,7 +276,9 @@ func (p *Proc) Start(args ...string) (err error) {
 
 // SetScanner sets scanner with the provided function
 func (p *Proc) SetScanner(scanFunc func(stderr bool, text string)) {
+	p.printMux.Lock()
 	p.scanner = &ScanConfig{scanFunc: scanFunc}
+	p.printMux.Unlock()
 }
 
 // ResetBuffers clears the buffers
@@ -324,7 +326,7 @@ func (p *Proc) scanAndWait() {
 				p.Stdout.WriteString(line + "\n")
 				p.Combined.WriteString(line + "\n")
 			}
-			if p.scanner != nil {
+			if p.scanner != nil && p.scanner.scanFunc != nil {
 				p.scanner.scanFunc(false, line)
 			}
 			p.printMux.Unlock()
@@ -341,7 +343,7 @@ func (p *Proc) scanAndWait() {
 	<-scannerExitChan
 	<-scannerExitChan
 
-	close(p.Done)
+	p.Done <- struct{}{}
 }
 
 // Run executes a command, prints output and waits for it to finish

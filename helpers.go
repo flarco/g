@@ -392,7 +392,7 @@ func MJ(args ...interface{}) string {
 }
 
 // ToMap convert an interface to a map via JSON
-func ToMap(i interface{}) Map {
+func ToMap(i interface{}) map[string]any {
 	m := M()
 	jBytes, _ := json.Marshal(i)
 	json.Unmarshal(jBytes, &m)
