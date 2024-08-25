@@ -45,7 +45,7 @@ type Proc struct {
 	StdinOverride                io.Reader
 	StderrReader, StdoutReader   io.ReadCloser
 	stderrScanner, stdoutScanner *bufio.Scanner
-	stdinWriter                  io.Writer
+	StdinWriter                  io.Writer
 	Pid                          int
 	Nice                         int
 	Context                      *g.Context
@@ -196,15 +196,13 @@ func (p *Proc) SetArgs(args ...string) {
 	p.Args = args
 }
 
-func (p *Proc) Close() (err error) {
-	wc, ok := p.stdinWriter.(io.WriteCloser)
+func (p *Proc) CloseStdin() (err error) {
+	wc, ok := p.StdinWriter.(io.WriteCloser)
 	if ok {
 		err = wc.Close()
 		if err != nil {
 			return g.Error(err, "could not close StdinPipe")
 		}
-	} else {
-		g.Debug("could not cast to io.WriteCloser")
 	}
 	return nil
 }
@@ -251,7 +249,7 @@ func (p *Proc) Start(args ...string) (err error) {
 	if p.StdinOverride != nil {
 		p.Cmd.Stdin = p.StdinOverride
 	} else {
-		p.stdinWriter, err = p.Cmd.StdinPipe()
+		p.StdinWriter, err = p.Cmd.StdinPipe()
 		if err != nil {
 			return g.Error(err)
 		}
@@ -301,20 +299,31 @@ func (p *Proc) SetScanner(scanFunc func(stderr bool, text string)) {
 	p.scanner = &ScanConfig{scanFunc: scanFunc}
 }
 
+// ResetBuffers clears the buffers
+func (p *Proc) ResetBuffers() {
+	p.Stdout.Reset()
+	p.Stderr.Reset()
+	p.Combined.Reset()
+}
+
+func (p *Proc) Exited() bool {
+	return p.Cmd == nil || (p.Cmd.ProcessState != nil && p.Cmd.ProcessState.Exited())
+}
+
 func (p *Proc) scanAndWait() {
 
 	scannerExitChan := make(chan bool)
 
 	go func() {
 		for p.stderrScanner.Scan() {
-			line := p.stderrScanner.Text() + "\n"
+			line := p.stderrScanner.Text()
 			p.printMux.Lock()
 			if p.Print {
-				fmt.Fprintf(os.Stderr, "%s", line)
+				fmt.Fprintf(os.Stderr, "%s", line+"\n")
 			}
 			if p.Capture {
-				p.Stderr.WriteString(line)
-				p.Combined.WriteString(line)
+				p.Stderr.WriteString(line + "\n")
+				p.Combined.WriteString(line + "\n")
 			}
 			if p.scanner != nil {
 				p.scanner.scanFunc(true, line)
@@ -326,14 +335,14 @@ func (p *Proc) scanAndWait() {
 
 	go func() {
 		for p.stdoutScanner.Scan() {
-			line := p.stdoutScanner.Text() + "\n"
+			line := p.stdoutScanner.Text()
 			p.printMux.Lock()
 			if p.Print {
-				fmt.Fprintf(os.Stdout, "%s", line)
+				fmt.Fprintf(os.Stdout, "%s", line+"\n")
 			}
 			if p.Capture {
-				p.Stdout.WriteString(line)
-				p.Combined.WriteString(line)
+				p.Stdout.WriteString(line + "\n")
+				p.Combined.WriteString(line + "\n")
 			}
 			if p.scanner != nil {
 				p.scanner.scanFunc(false, line)
@@ -374,7 +383,15 @@ func (p *Proc) Run(args ...string) (err error) {
 // CmdErrorText returns the command error text
 func (p *Proc) CmdErrorText() string {
 	if p.HideCmdInErr {
-		return g.F("%s\n%s", p.Stderr.String(), p.Stdout.String())
+		e := strings.TrimSpace(p.Stderr.String())
+		o := strings.TrimSpace(p.Stdout.String())
+		switch {
+		case e == "":
+			return o
+		case o == "":
+			return e
+		}
+		return e + "  " + o
 	}
 	return fmt.Sprintf(
 		"Proc command -> %s\n%s\n%s",
@@ -388,7 +405,7 @@ func (p *Proc) Wait() error {
 	<-p.Done
 	code := p.Cmd.ProcessState.ExitCode()
 	if p.Err != nil {
-		return g.Error(p.Err)
+		return p.Err
 	} else if code != 0 {
 		return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
 	}

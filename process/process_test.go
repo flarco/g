@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,60 +12,160 @@ import (
 )
 
 func TestProcess(t *testing.T) {
-	// Test NewProc
-	p, err := NewProc("echo", "Hello, World!")
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-
-	// Test Proc.Run
-	p.Capture = true
-	err = p.Run()
-	assert.NoError(t, err)
-	assert.Contains(t, p.Stdout.String(), "Hello, World!")
-
-	// Test Proc with non-existent command
-	p, err = NewProc("non_existent_command")
-	assert.NotNil(t, p)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "executable 'non_existent_command' not found in path")
-
-	// Test Proc.SetScanner
-	p, err = NewProc("echo", "Hello, Scanner!")
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-
-	scanCount := 0
-	p.SetScanner(func(stderr bool, text string) {
-		scanCount++
-		assert.False(t, stderr)
-		assert.Contains(t, text, "Hello, Scanner!")
+	t.Run("NewProc", func(t *testing.T) {
+		p, err := NewProc("echo", "Hello, World!")
+		assert.NoError(t, err)
+		assert.NotNil(t, p)
 	})
 
-	p.Capture = true
-	err = p.Run()
-	assert.NoError(t, err)
-	assert.Equal(t, 1, scanCount)
-	assert.Contains(t, p.Stdout.String(), "Hello, Scanner!")
-
-	// Test Proc.SetScanner with multiple lines
-	p, err = NewProc("echo", "-e", "Line 1\nLine 2\nLine 3")
-	assert.NoError(t, err)
-	assert.NotNil(t, p)
-
-	lineCount := 0
-	p.SetScanner(func(stderr bool, text string) {
-		lineCount++
-		assert.False(t, stderr)
-		assert.Contains(t, text, "Line")
+	t.Run("Proc.Run", func(t *testing.T) {
+		p, _ := NewProc("echo", "Hello, World!")
+		p.Capture = true
+		err := p.Run()
+		assert.NoError(t, err)
+		assert.Contains(t, p.Stdout.String(), "Hello, World!")
 	})
 
-	p.Capture = true
-	err = p.Run()
-	assert.NoError(t, err)
-	assert.Equal(t, 3, lineCount)
-	assert.Contains(t, p.Stdout.String(), "Line 1")
-	assert.Contains(t, p.Stdout.String(), "Line 2")
-	assert.Contains(t, p.Stdout.String(), "Line 3")
+	t.Run("NonExistentCommand", func(t *testing.T) {
+		p, err := NewProc("non_existent_command")
+		assert.NotNil(t, p)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "executable 'non_existent_command' not found in path")
+	})
+
+	t.Run("Proc.SetScanner", func(t *testing.T) {
+		p, _ := NewProc("echo", "Hello, Scanner!")
+		scanCount := 0
+
+		p.SetScanner(func(stderr bool, text string) {
+			scanCount++
+			assert.False(t, stderr)
+			assert.Contains(t, text, "Hello, Scanner!")
+		})
+		p.Capture = true
+
+		err := p.Run()
+		assert.NoError(t, err)
+		assert.Equal(t, 1, scanCount)
+		assert.Contains(t, p.Stdout.String(), "Hello, Scanner!")
+	})
+
+	t.Run("Proc.SetScannerMultipleLines", func(t *testing.T) {
+		p, _ := NewProc("echo", "-e", "Line 1\nLine 2\nLine 3")
+		lineCount := 0
+
+		p.SetScanner(func(stderr bool, text string) {
+			lineCount++
+			assert.False(t, stderr)
+			assert.Contains(t, text, "Line")
+		})
+		p.Capture = true
+
+		err := p.Run()
+		assert.NoError(t, err)
+		assert.Equal(t, 3, lineCount)
+		assert.Contains(t, p.Stdout.String(), "Line 1")
+		assert.Contains(t, p.Stdout.String(), "Line 2")
+		assert.Contains(t, p.Stdout.String(), "Line 3")
+	})
+
+	t.Run("ProcWithStdinInput", func(t *testing.T) {
+		p, _ := NewProc("cat")
+		p.Capture = true
+		p.StdinOverride = strings.NewReader("Hello from stdin!")
+
+		err := p.Run()
+		assert.NoError(t, err)
+		assert.Contains(t, p.Stdout.String(), "Hello from stdin!")
+	})
+
+	t.Run("ProcWithMultiLineStdinInput", func(t *testing.T) {
+		p, _ := NewProc("sort")
+		p.Capture = true
+		p.StdinOverride = strings.NewReader("banana\napple\ncherry")
+
+		err := p.Run()
+		assert.NoError(t, err)
+		assert.Equal(t, "apple\nbanana\ncherry\n", p.Stdout.String())
+	})
+
+	t.Run("ProcWithStdinAndArguments", func(t *testing.T) {
+		p, _ := NewProc("grep", "Hello")
+		p.Capture = true
+		p.StdinOverride = strings.NewReader("Hello, World!\nGoodbye, World!")
+
+		err := p.Run()
+		assert.NoError(t, err)
+		assert.Equal(t, "Hello, World!\n", p.Stdout.String())
+	})
+
+	t.Run("ProcWithStdinWriter", func(t *testing.T) {
+		p, _ := NewProc("cat")
+		p.Capture = true
+
+		err := p.Start()
+		assert.NoError(t, err)
+
+		_, err = p.StdinWriter.Write([]byte("Hello from StdinWriter!"))
+		assert.NoError(t, err)
+
+		err = p.CloseStdin()
+		assert.NoError(t, err)
+
+		err = p.Wait()
+		assert.NoError(t, err)
+		assert.Contains(t, p.Stdout.String(), "Hello from StdinWriter!")
+	})
+
+	t.Run("ProcWithMultiLineStdinWriter", func(t *testing.T) {
+		p, _ := NewProc("sort")
+		p.Capture = true
+
+		err := p.Start()
+		assert.NoError(t, err)
+
+		_, err = p.StdinWriter.Write([]byte("banana\napple\ncherry"))
+		assert.NoError(t, err)
+
+		err = p.CloseStdin()
+		assert.NoError(t, err)
+
+		err = p.Wait()
+		assert.NoError(t, err)
+		assert.Equal(t, "apple\nbanana\ncherry\n", p.Stdout.String())
+	})
+
+	t.Run("ProcWithScannerAndStdinWriter", func(t *testing.T) {
+		p, err := NewProc("cat")
+		assert.NoError(t, err)
+		p.Capture = true
+
+		scannerOutput := ""
+		p.SetScanner(func(isStderr bool, text string) {
+			if !isStderr {
+				scannerOutput += text + "\n"
+			}
+		})
+
+		err = p.Start()
+		assert.NoError(t, err)
+
+		inputText := "Hello from StdinWriter!\nThis is a test.\n"
+		_, err = p.StdinWriter.Write([]byte(inputText))
+		assert.NoError(t, err)
+
+		// Give some time for the scanner to process the input
+		time.Sleep(100 * time.Millisecond)
+
+		err = p.CloseStdin()
+		assert.NoError(t, err)
+
+		err = p.Wait()
+		assert.NoError(t, err)
+
+		assert.Equal(t, inputText, p.Stdout.String())
+		assert.Equal(t, inputText, scannerOutput)
+	})
 }
 
 func TestSession(t *testing.T) {
