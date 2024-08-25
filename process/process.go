@@ -271,26 +271,6 @@ func (p *Proc) Start(args ...string) (err error) {
 		niceCmd.Run()
 	}
 
-	// listen for context cancel
-	go func() {
-		select {
-		case <-p.Done:
-			return
-		case <-p.Context.Ctx.Done():
-		}
-
-		g.Debug("interrupting sub-process %d", p.Cmd.Process.Pid)
-		p.Cmd.Process.Signal(syscall.SIGINT)
-		t := time.NewTimer(5 * time.Second)
-		select {
-		case <-p.Done:
-			return
-		case <-t.C:
-			g.Debug("killing sub-process %d", p.Cmd.Process.Pid)
-			g.LogError(p.Cmd.Process.Kill())
-		}
-	}()
-
 	return
 }
 
@@ -402,7 +382,20 @@ func (p *Proc) CmdErrorText() string {
 // Wait waits for the process to end
 func (p *Proc) Wait() error {
 
-	<-p.Done
+	select {
+	case <-p.Done:
+	case <-p.Context.Ctx.Done():
+		g.Debug("interrupting sub-process %d", p.Cmd.Process.Pid)
+		p.Cmd.Process.Signal(syscall.SIGINT)
+		t := time.NewTimer(5 * time.Second)
+		select {
+		case <-p.Done:
+		case <-t.C:
+			g.Debug("killing sub-process %d", p.Cmd.Process.Pid)
+			g.LogError(p.Cmd.Process.Kill())
+		}
+	}
+
 	code := p.Cmd.ProcessState.ExitCode()
 	if p.Err != nil {
 		return p.Err
