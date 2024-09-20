@@ -809,35 +809,27 @@ func ExtractTarGz(filePath, outFolder string) (err error) {
 		}
 
 		if err != nil {
-			log.Fatalf("ExtractTarGz: Next() failed: %s", err.Error())
-			return Error(
-				err,
-				"ExtractTarGz: Next() failed",
-				header.Typeflag,
-				header.Name)
+			return Error(err, "could not extract archive")
 		}
 
 		outPath := path.Join(outFolder, header.Name)
 		switch header.Typeflag {
 		case tar.TypeDir:
 			if err := os.Mkdir(outPath, 0755); err != nil {
-				log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
+				return Error(err, "could not create directory => %s", outPath)
 			}
 		case tar.TypeReg:
 			outFile, err := os.Create(outPath)
 			if err != nil {
-				log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
+				return Error(err, "could not create file => %s", outPath)
 			}
 			if _, err := io.Copy(outFile, tarReader); err != nil {
-				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
+				return Error(err, "could not write to file => %s", outPath)
 			}
 			outFile.Close()
 
 		default:
-			return Error(
-				"ExtractTarGz: uknown type: %s in %s",
-				header.Typeflag,
-				header.Name)
+			return Error("unknown type: %s in %s", header.Typeflag, header.Name)
 		}
 	}
 
