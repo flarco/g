@@ -307,7 +307,7 @@ func (p *Proc) scanAndWait() {
 				p.Stderr.WriteString(line + "\n")
 				p.Combined.WriteString(line + "\n")
 			}
-			if p.scanner != nil {
+			if p.scanner != nil && p.scanner.scanFunc != nil {
 				p.scanner.scanFunc(true, line)
 			}
 			p.printMux.Unlock()
@@ -398,11 +398,14 @@ func (p *Proc) Wait() error {
 		}
 	}
 
-	code := p.Cmd.ProcessState.ExitCode()
 	if p.Err != nil {
 		return p.Err
-	} else if code != 0 {
-		return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
+	}
+
+	if p.Cmd != nil && p.Cmd.ProcessState != nil {
+		if code := p.Cmd.ProcessState.ExitCode(); code != 0 {
+			return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
+		}
 	}
 
 	return nil
