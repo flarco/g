@@ -766,23 +766,23 @@ func GetRootCommit(dirPath string) (rootCommit string) {
 	return
 }
 
-// the root folder of a Git repository
-func GetRootFolder(startDir string) (string, error) {
+// Finds the root folder where a  parent file or folder matches name
+func GetRootFolder(startDir, name string) (string, error) {
 	dir := startDir
 
 	for {
-		// Check if the .git directory exists in the current directory
-		gitPath := filepath.Join(dir, ".git")
-		if _, err := os.Stat(gitPath); err == nil {
-			// Found the .git directory, return the current directory as the Git root
+		// Check if the directory / file exists in the current directory
+		path := filepath.Join(dir, name)
+		if _, err := os.Stat(path); err == nil {
+			// Found the root directory, return the current directory
 			return dir, nil
 		}
 
 		// Move to the parent directory
 		parentDir := filepath.Dir(dir)
 		if parentDir == dir {
-			// Reached the root of the filesystem without finding a .git directory
-			return "", fmt.Errorf(".git directory not found")
+			// Reached the root of the filesystem without finding
+			return "", Error("%s file/directory not found", name)
 		}
 
 		dir = parentDir
