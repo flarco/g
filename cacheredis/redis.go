@@ -68,7 +68,7 @@ func NewCache(cfg Config) (c *Cache, err error) {
 	}
 
 	c = &Cache{
-		Context: &context,
+		Context: context,
 		R:       rdb,
 		Rs:      rs,
 		GMux:    mutex,

@@ -35,7 +35,7 @@ type SizedWaitGroup struct {
 }
 
 // NewContext creates a new context
-func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
+func NewContext(parentCtx context.Context, concurrencyLimits ...int) *Context {
 	concurrencyLimit := runtime.NumCPU()
 	if len(concurrencyLimits) > 0 {
 		concurrencyLimit = concurrencyLimits[0]
@@ -48,7 +48,7 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
 		Read:  sizedwaitgroup.New(concurrencyLimit),
 		Write: sizedwaitgroup.New(concurrencyLimit),
 	}
-	return Context{
+	return &Context{
 		Ctx:      ctx,
 		Cancel:   cancel,
 		Wg:       wg,

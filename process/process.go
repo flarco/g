@@ -214,8 +214,7 @@ func (p *Proc) Start(args ...string) (err error) {
 	}
 
 	if p.Context == nil {
-		context := g.NewContext(context.Background())
-		p.Context = &context
+		p.Context = g.NewContext(context.Background())
 	}
 
 	// reset channels

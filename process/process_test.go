@@ -203,8 +203,7 @@ func TestProcWithContext(t *testing.T) {
 
 	c, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	ctx := g.NewContext(c)
-	p.Context = &ctx
+	p.Context = g.NewContext(c)
 
 	start := time.Now()
 	err = p.Run()
