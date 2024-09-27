@@ -23,6 +23,8 @@ type Context struct {
 	MsgChan  chan map[string]any `json:"-"`
 
 	Map cmap.ConcurrentMap[string, any] `json:"map"`
+
+	with map[string]any `json:"-"` // for  single log event
 }
 
 // SizedWaitGroup with separate wait groups for read & write
@@ -60,6 +62,12 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) Context {
 
 const logKeyID = "_log_keys"
 
+// Wrapper to set log values
+func (c *Context) WithLogValues(KVs ...any) *Context {
+	c.SetLogValues(KVs...)
+	return c
+}
+
 // SetLogValues sets log key and value pairs
 func (c *Context) SetLogValues(KVs ...any) {
 	logKeysMap := c.getLogKeysMap()
@@ -76,6 +84,12 @@ func (c *Context) GetLogValues() map[string]any {
 	for k := range c.getLogKeysMap() {
 		m[k], _ = c.Map.Get(k)
 	}
+
+	for k, v := range c.with {
+		m[k] = v
+	}
+	c.with = nil // reset
+
 	return m
 }
 
@@ -88,6 +102,12 @@ func (c *Context) getLogKeysMap() (logKeysMap map[string]any) {
 	}
 
 	return logKeysMap
+}
+
+// With provides KVs for only the next log event
+func (c *Context) With(KVs ...any) *Context {
+	c.with = M(KVs...)
+	return c
 }
 
 func (c *Context) Trace(text string, args ...any) { Trace(text, append(args, c.GetLogValues())...) }
