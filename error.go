@@ -285,16 +285,18 @@ var ErrorIf = Error
 // LogError handles logging of an error, useful for reporting
 func LogError(E error, args ...interface{}) bool {
 	if E != nil {
+		args = addCaller(args)
 		err, ok := E.(*ErrType)
 		if !ok {
 			err = NewError(3, E, args...).(*ErrType)
 		}
-		doHooks(zerolog.DebugLevel, err.Error(), args)
 
 		var e *zerolog.Event
 		if IsDebugLow() {
+			doHooks(zerolog.ErrorLevel, err.Debug(), args)
 			e = ZLogErr.Err(err.DebugError())
 		} else {
+			doHooks(zerolog.ErrorLevel, err.Error(), args)
 			e = ZLogErr.Error()
 		}
 		extractLogMapArgs(args, e)

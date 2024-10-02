@@ -90,7 +90,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestGenToken(t *testing.T) {
-	token := RandString(AplhanumericRunes, 32)
+	token := RandString(AlphaNumericRunes, 32)
 	hash, _ := Hash(token + token)
 	println(token)
 	println(hash)

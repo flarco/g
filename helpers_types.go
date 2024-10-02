@@ -62,8 +62,11 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) *Context {
 
 const logKeyID = "_log_keys"
 
-// Wrapper to set log values
-func (c *Context) WithLogValues(KVs ...any) *Context {
+// GlobalLogValues allows a key/values inserted in all logging events
+var GlobalLogValues = cmap.New[any]()
+
+// Wrapper to set log key/values
+func (c *Context) With(KVs ...any) *Context {
 	c.SetLogValues(KVs...)
 	return c
 }
@@ -81,6 +84,11 @@ func (c *Context) SetLogValues(KVs ...any) {
 // GetLogValues gets Log values as a map
 func (c *Context) GetLogValues() map[string]any {
 	m := M()
+
+	for k, v := range GlobalLogValues.Items() {
+		m[k] = v
+	}
+
 	for k := range c.getLogKeysMap() {
 		m[k], _ = c.Map.Get(k)
 	}
@@ -104,8 +112,8 @@ func (c *Context) getLogKeysMap() (logKeysMap map[string]any) {
 	return logKeysMap
 }
 
-// With provides KVs for only the next log event
-func (c *Context) With(KVs ...any) *Context {
+// WithNext provides KVs for only the next log event
+func (c *Context) WithNext(KVs ...any) *Context {
 	c.with = M(KVs...)
 	return c
 }

@@ -43,8 +43,8 @@ const (
 	AlphaRunesUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	// NumericRunes are numeric chars
 	NumericRunes = "1234567890"
-	// AplhanumericRunes are alphanumeric chars
-	AplhanumericRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+	// AlphaNumericRunes are alphanumeric chars
+	AlphaNumericRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 	// TokenRunes are alphanumeric+ chars for tokens
 	TokenRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_."
 )
@@ -501,7 +501,7 @@ func NewTsID(prefix ...string) string {
 		p = prefix[0] + "."
 	}
 	tsMilli := int64(cast.ToFloat64(time.Now().UnixNano()) / 1000000.0)
-	return F("%s%d.%s", p, tsMilli, RandString(AplhanumericRunes, 3))
+	return F("%s%d.%s", p, tsMilli, RandString(AlphaNumericRunes, 3))
 }
 
 // ArrI returns an array of interface
@@ -659,9 +659,25 @@ func String(v string) *string {
 	return &v
 }
 
+// StringVal returns a the value of the string
+func StringVal(v *string) string {
+	if v != nil {
+		return *v
+	}
+	return ""
+}
+
 // Int returns a pointer to the int value passed in.
 func Int(v int) *int {
 	return &v
+}
+
+// IntVal returns the value of the int
+func IntVal(v *int) int {
+	if v != nil {
+		return *v
+	}
+	return 0
 }
 
 // UInt returns a pointer to the uint value passed in.
@@ -669,9 +685,25 @@ func UInt(v uint) *uint {
 	return &v
 }
 
+// UIntVal returns the value of the uint
+func UIntVal(v *uint) uint {
+	if v != nil {
+		return *v
+	}
+	return 0
+}
+
 // Int64 returns a pointer to the int64 value passed in.
 func Int64(v int64) *int64 {
 	return &v
+}
+
+// Int64Val returns the value of the int64
+func Int64Val(v *int64) int64 {
+	if v != nil {
+		return *v
+	}
+	return 0
 }
 
 // UInt64 returns a pointer to the uint64 value passed in.
@@ -679,14 +711,38 @@ func UInt64(v uint64) *uint64 {
 	return &v
 }
 
+// UInt64Val returns the value of the uint64
+func UInt64Val(v *uint64) uint64 {
+	if v != nil {
+		return *v
+	}
+	return 0
+}
+
 // Bool returns a pointer to the bool value passed in.
 func Bool(v bool) *bool {
 	return &v
 }
 
+// BoolVal returns the value of the bool
+func BoolVal(v *bool) bool {
+	if v != nil {
+		return *v
+	}
+	return false
+}
+
 // Time returns a pointer to the time value passed in.
 func Time(v time.Time) *time.Time {
 	return &v
+}
+
+// TimeVal returns the value of the time
+func TimeVal(v *time.Time) time.Time {
+	if v != nil {
+		return *v
+	}
+	return time.Time{}
 }
 
 // CompareVersions uses integers for each part to compare

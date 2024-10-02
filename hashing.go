@@ -76,7 +76,7 @@ func hashEqual(h1, h2 []byte) bool {
 var randSeeded = false
 
 // RandString returns a random string of len n with the provided char set
-// charset can be `AlphaRunes`, `AlphaRunesLower`, `AlphaRunesUpper` or `AplhanumericRunes`
+// charset can be `AlphaRunes`, `AlphaRunesLower`, `AlphaRunesUpper` or `AlphaNumericRunes`
 func RandString(charset string, n int) string {
 	if !randSeeded {
 		rand2.Seed(time.Now().UnixNano())
@@ -91,9 +91,9 @@ func RandString(charset string, n int) string {
 	return string(b)
 }
 
-// RandSuffix returns a random AplhanumericRunes suffix of `n` length
+// RandSuffix returns a random AlphaNumericRunes suffix of `n` length
 func RandSuffix(str string, n int) string {
-	return str + RandString(AplhanumericRunes, n)
+	return str + RandString(AlphaNumericRunes, n)
 }
 
 // RandInt64 returns a random positive number up to max
