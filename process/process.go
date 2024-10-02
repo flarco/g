@@ -31,6 +31,28 @@ type Session struct {
 	mux            sync.Mutex
 }
 
+type Label struct {
+	Value string
+	Len   int
+	Color int
+}
+
+func (l *Label) Render() string {
+	if l.Value == "" {
+		return ""
+	}
+
+	label := l.Value
+	if l.Color > 0 {
+		label = g.Colorize(l.Color, l.Value)
+	}
+
+	if l.Len > len(l.Value) {
+		label = label + strings.Repeat(" ", l.Len-len(l.Value))
+	}
+	return label
+}
+
 // Proc is a command background process
 type Proc struct {
 	Bin                          string
@@ -38,6 +60,7 @@ type Proc struct {
 	Env                          map[string]string
 	Err                          error
 	Cmd                          *exec.Cmd
+	Label                        Label
 	WorkDir                      string
 	HideCmdInErr                 bool
 	Capture, Print               bool
@@ -295,11 +318,16 @@ func (p *Proc) scanAndWait() {
 
 	scannerExitChan := make(chan bool)
 
+	label := p.Label.Render()
+
 	go func() {
 		for p.stderrScanner.Scan() {
 			line := p.stderrScanner.Text()
 			p.printMux.Lock()
 			if p.Print {
+				if label != "" {
+					line = g.F("%s | %s", g.Colorize(g.ColorDarkGray, label), line)
+				}
 				fmt.Fprintf(os.Stderr, "%s", line+"\n")
 			}
 			if p.Capture {
