@@ -60,7 +60,10 @@ func NewContext(parentCtx context.Context, concurrencyLimits ...int) *Context {
 	}
 }
 
-const logKeyID = "_log_keys"
+const (
+	logKeyID          = "_log_keys"
+	logCalledStartVal = "_DEBUG_CALLER_START=4"
+)
 
 // GlobalLogValues allows a key/values inserted in all logging events
 var GlobalLogValues = cmap.New[any]()
@@ -118,13 +121,23 @@ func (c *Context) WithNext(KVs ...any) *Context {
 	return c
 }
 
-func (c *Context) Trace(text string, args ...any) { Trace(text, append(args, c.GetLogValues())...) }
-func (c *Context) Debug(text string, args ...any) { Debug(text, append(args, c.GetLogValues())...) }
-func (c *Context) Info(text string, args ...any)  { Info(text, append(args, c.GetLogValues())...) }
-func (c *Context) Warn(text string, args ...any)  { Warn(text, append(args, c.GetLogValues())...) }
-func (c *Context) Error(text string, args ...any) { Err(text, append(args, c.GetLogValues())...) }
+func (c *Context) Trace(text string, args ...any) {
+	Trace(text, append(args, c.GetLogValues(), logCalledStartVal)...)
+}
+func (c *Context) Debug(text string, args ...any) {
+	Debug(text, append(args, c.GetLogValues(), logCalledStartVal)...)
+}
+func (c *Context) Info(text string, args ...any) {
+	Info(text, append(args, c.GetLogValues(), logCalledStartVal)...)
+}
+func (c *Context) Warn(text string, args ...any) {
+	Warn(text, append(args, c.GetLogValues(), logCalledStartVal)...)
+}
+func (c *Context) Error(text string, args ...any) {
+	Err(text, append(args, c.GetLogValues(), logCalledStartVal)...)
+}
 func (c *Context) LogError(E error, args ...interface{}) {
-	LogError(E, append(args, c.GetLogValues())...)
+	LogError(E, append(args, c.GetLogValues(), logCalledStartVal)...)
 }
 
 // SetConcurrencyLimit sets the concurrency limit

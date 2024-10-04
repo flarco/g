@@ -324,18 +324,18 @@ func (p *Proc) scanAndWait() {
 		for p.stderrScanner.Scan() {
 			line := p.stderrScanner.Text()
 			p.printMux.Lock()
-			if p.Print {
-				if label != "" {
-					line = g.F("%s | %s", g.Colorize(g.ColorDarkGray, label), line)
-				}
-				fmt.Fprintf(os.Stderr, "%s", line+"\n")
-			}
 			if p.Capture {
 				p.Stderr.WriteString(line + "\n")
 				p.Combined.WriteString(line + "\n")
 			}
 			if p.scanner != nil && p.scanner.scanFunc != nil {
 				p.scanner.scanFunc(true, line)
+			}
+			if p.Print {
+				if label != "" {
+					line = g.F("%s | %s", g.Colorize(g.ColorDarkGray, label), line)
+				}
+				fmt.Fprintf(os.Stderr, "%s", line+"\n")
 			}
 			p.printMux.Unlock()
 		}
@@ -346,15 +346,18 @@ func (p *Proc) scanAndWait() {
 		for p.stdoutScanner.Scan() {
 			line := p.stdoutScanner.Text()
 			p.printMux.Lock()
-			if p.Print {
-				fmt.Fprintf(os.Stdout, "%s", line+"\n")
-			}
 			if p.Capture {
 				p.Stdout.WriteString(line + "\n")
 				p.Combined.WriteString(line + "\n")
 			}
 			if p.scanner != nil && p.scanner.scanFunc != nil {
 				p.scanner.scanFunc(false, line)
+			}
+			if p.Print {
+				if label != "" {
+					line = g.F("%s | %s", g.Colorize(g.ColorDarkGray, label), line)
+				}
+				fmt.Fprintf(os.Stdout, "%s", line+"\n")
 			}
 			p.printMux.Unlock()
 		}

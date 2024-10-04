@@ -284,15 +284,24 @@ func getCaller(start, level int) string {
 }
 
 func addCaller(args []interface{}) []interface{} {
+	callerStart := 3
+	newArgs := []any{}
+	for _, arg := range args {
+		if a := cast.ToString(arg); strings.HasPrefix(a, "_DEBUG_CALLER_START=") {
+			callerStart = cast.ToInt(strings.TrimPrefix(a, "_DEBUG_CALLER_START="))
+		} else {
+			newArgs = append(newArgs, arg)
+		}
+	}
+
 	if CallerLevel == 0 {
-		return args
+		return newArgs
+	}
+	if caller := getCaller(callerStart, CallerLevel); caller != "" {
+		newArgs = append(newArgs, M("caller", caller))
 	}
 
-	if caller := getCaller(3, CallerLevel); caller != "" {
-		args = append(args, M("caller", caller))
-	}
-
-	return args
+	return newArgs
 }
 
 // Debug : print text in debug level
@@ -313,12 +322,14 @@ func DebugLow(text string, args ...interface{}) {
 
 // Info : print text in info level
 func Info(text string, args ...interface{}) {
+	args = addCaller(args)
 	doHooks(zerolog.InfoLevel, text, args)
 	doLog(ZLogErr.Info(), text, args)
 }
 
 // Err : print text in error level
 func Err(text string, args ...interface{}) {
+	args = addCaller(args)
 	doHooks(zerolog.ErrorLevel, text, args)
 	doLog(ZLogErr.Error(), text, args)
 }
@@ -442,6 +453,7 @@ func Trace(text string, args ...interface{}) {
 
 // Warn : print text in warning level
 func Warn(text string, args ...interface{}) {
+	args = addCaller(args)
 	doHooks(zerolog.WarnLevel, text, args)
 	doLog(ZLogErr.Warn(), text, args)
 }
