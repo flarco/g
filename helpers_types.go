@@ -136,8 +136,8 @@ func (c *Context) Warn(text string, args ...any) {
 func (c *Context) Error(text string, args ...any) {
 	Err(text, append(args, c.GetLogValues(), logCalledStartVal)...)
 }
-func (c *Context) LogError(E error, args ...interface{}) {
-	LogError(E, append(args, c.GetLogValues(), logCalledStartVal)...)
+func (c *Context) LogError(E error, args ...interface{}) bool {
+	return LogError(E, append(args, c.GetLogValues(), logCalledStartVal)...)
 }
 
 // SetConcurrencyLimit sets the concurrency limit
