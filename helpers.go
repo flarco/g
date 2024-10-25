@@ -658,6 +658,12 @@ func IsMatched(filters []string, name string) bool {
 func Ptr[T any](t T) *T {
 	return &t
 }
+func PtrVal[T any](t *T) T {
+	if t != nil {
+		return *t
+	}
+	return *new(T)
+}
 
 // String returns a pointer to the string value passed in.
 func String(v string) *string {
