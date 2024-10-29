@@ -193,12 +193,27 @@ func Rm(format string, m map[string]interface{}) string {
 		return format
 	}
 
-	args, i := make([]string, len(m)*2), 0
+	var err error
+	args, i := make([]string, len(m)*4), 0
+
 	for k, v := range m {
-		args[i] = "{" + k + "}"
-		args[i+1] = cast.ToString(v)
+		args[i] = "${" + k + "}"
+		args[i+1], err = cast.ToStringE(v)
+		if err != nil {
+			args[i+1] = Marshal(v)
+		}
 		i += 2
 	}
+
+	for k, v := range m {
+		args[i] = "{" + k + "}"
+		args[i+1], err = cast.ToStringE(v)
+		if err != nil {
+			args[i+1] = Marshal(v)
+		}
+		i += 2
+	}
+
 	return strings.NewReplacer(args...).Replace(format)
 }
 
