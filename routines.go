@@ -1,18 +1,22 @@
 package g
 
 import (
+	"bufio"
+	"context"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/net"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/docker"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/process"
 	"github.com/spf13/cast"
 )
 
@@ -95,6 +99,25 @@ func GetMachineProcStats() ProcStats {
 	if diskUsage != nil {
 		stats.DiskPct = diskUsage.UsedPercent
 		stats.DiskFree = diskUsage.Free
+	}
+
+	return stats
+}
+
+func GetContainerStats(containerID string) ProcStats {
+	stats := ProcStats{}
+
+	cpuStats, err := docker.CgroupCPUDocker(containerID)
+	if err == nil {
+		stats.CpuPct = cpuStats.Usage
+		stats.CpuTime = cpuStats.Total()
+	}
+
+	memStats, err := docker.CgroupMemDocker(containerID)
+	if err == nil {
+		stats.RamPct = float64(memStats.MemUsageInBytes) / float64(memStats.MemLimitInBytes)
+		stats.RamRss = memStats.RSS
+		stats.RamTotal = memStats.MemLimitInBytes
 	}
 
 	return stats
@@ -187,4 +210,77 @@ func GetRunningGoRoutines() (routines []Routine) {
 	}
 
 	return
+}
+
+// GetOwnContainerID returns the container ID of the current process
+// Returns empty string if not running inside a container
+func GetOwnContainerID() (string, error) {
+	return GetOwnContainerIDWithContext(context.Background())
+}
+
+func GetOwnContainerIDWithContext(ctx context.Context) (string, error) {
+	contents, err := ReadLines("/proc/self/cgroup")
+	if err != nil {
+		return "", err
+	}
+
+	for _, line := range contents {
+		fields := strings.Split(line, ":")
+		if len(fields) != 3 {
+			continue
+		}
+
+		// Look for the container ID in the cgroup path
+		parts := strings.Split(fields[2], "/")
+		for _, part := range parts {
+			// Docker container IDs are 64 characters long
+			if len(part) == 64 {
+				return part, nil
+			}
+			// Also check for docker prefix
+			if strings.HasPrefix(part, "docker-") {
+				return strings.TrimPrefix(part, "docker-"), nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+// ReadLines reads contents from a file and splits them by new lines.
+// A convenience wrapper to ReadLinesOffsetN(filename, 0, -1).
+func ReadLines(filename string) ([]string, error) {
+	return ReadLinesOffsetN(filename, 0, -1)
+}
+
+// ReadLinesOffsetN reads contents from file and splits them by new line.
+// The offset tells at which line number to start.
+// The count determines the number of lines to read (starting from offset):
+// n >= 0: at most n lines
+// n < 0: whole file
+func ReadLinesOffsetN(filename string, offset uint, n int) ([]string, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return []string{""}, err
+	}
+	defer f.Close()
+
+	var ret []string
+
+	r := bufio.NewReader(f)
+	for i := uint(0); i < uint(n)+offset || n < 0; i++ {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			if err == io.EOF && len(line) > 0 {
+				ret = append(ret, strings.Trim(line, "\n"))
+			}
+			break
+		}
+		if i < offset {
+			continue
+		}
+		ret = append(ret, strings.Trim(line, "\n"))
+	}
+
+	return ret, nil
 }
