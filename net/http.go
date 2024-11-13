@@ -104,7 +104,7 @@ func ClientDo(method, URL string, body io.Reader, headers map[string]string, tim
 		err = g.Error(err, "could not read from request body")
 	}
 
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+	if resp.StatusCode >= 400 || resp.StatusCode < 200 {
 		err = g.Error("Unexpected Response %d: %s. %s", resp.StatusCode, resp.Status, string(respBytes))
 		return
 	}
