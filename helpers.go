@@ -187,9 +187,30 @@ func R(format string, args ...string) string {
 	return r.Replace(format)
 }
 
-// Rm is like R, for replacing with a map
+// Rm is like R, for replacing with a map. replaces  {var}
 func Rm(format string, m map[string]interface{}) string {
-	if m == nil || len(m) == 0 {
+	if len(m) == 0 {
+		return format
+	}
+
+	var err error
+	args, i := make([]string, len(m)*4), 0
+
+	for k, v := range m {
+		args[i] = "{" + k + "}"
+		args[i+1], err = cast.ToStringE(v)
+		if err != nil {
+			args[i+1] = Marshal(v)
+		}
+		i += 2
+	}
+
+	return strings.NewReplacer(args...).Replace(format)
+}
+
+// Rme is like Rm, for replacing with a map. replaces ${var} and {var}
+func Rme(format string, m map[string]interface{}) string {
+	if len(m) == 0 {
 		return format
 	}
 
