@@ -238,6 +238,27 @@ func Rme(format string, m map[string]interface{}) string {
 	return strings.NewReplacer(args...).Replace(format)
 }
 
+// Rmd is like Rm, for replacing with a map. replaces ${var}
+func Rmd(format string, m map[string]interface{}) string {
+	if len(m) == 0 {
+		return format
+	}
+
+	var err error
+	args, i := make([]string, len(m)*4), 0
+
+	for k, v := range m {
+		args[i] = "${" + k + "}"
+		args[i+1], err = cast.ToStringE(v)
+		if err != nil {
+			args[i+1] = Marshal(v)
+		}
+		i += 2
+	}
+
+	return strings.NewReplacer(args...).Replace(format)
+}
+
 // Match is a regex match
 type Match struct {
 	Full  string
