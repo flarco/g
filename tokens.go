@@ -149,6 +149,18 @@ func (t Token) IsAlone() bool {
 	return t.Previous().IsWhitespace() && t.Next().IsWhitespace()
 }
 
+// NextWhitespace returns the next whitespace token.
+func (t Token) NextWhitespace() (nt Token) {
+	nt = t
+	for nt.HasNext() {
+		nt = nt.Next()
+		if nt.IsWhitespace() {
+			return
+		}
+	}
+	return Token{Index: -1}
+}
+
 // NextNonWhitespace returns the next non-whitespace token.
 func (t Token) NextNonWhitespace() (nt Token) {
 	nt = t
@@ -249,6 +261,15 @@ func (t Token) Select(delta int) (nts Tokens) {
 		}
 	}
 	return nts.Recreate()
+}
+
+// SelectUntilWhitespace returns the tokens until a whitespace or end
+func (t Token) SelectUntilWhitespace() (nts Tokens) {
+	nw := t.NextWhitespace()
+	if nw.Index == -1 && t.body != nil {
+		nw = t.body.Tokens.Last()
+	}
+	return t.Select(nw.Index - t.Index).TrimWhiteSpace()
 }
 
 // SelectNonWhitespace returns a slice of non-whitespace tokens starting from the current token
