@@ -583,6 +583,35 @@ func PathExists(path string) bool {
 	return err == nil
 }
 
+// PathSize returns the total size of the file or folder at path
+// it calculates the total size of all nested files recursively
+func PathSize(path string) (size int64, err error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		return 0, Error(err, "could not stat path")
+	}
+
+	if !info.IsDir() {
+		return info.Size(), nil
+	}
+
+	err = filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return nil
+	})
+
+	if err != nil {
+		return 0, Error(err, "error walking path")
+	}
+
+	return size, nil
+}
+
 // In returns true if `item` matches a value in `potMatches`
 func In[T comparable](item T, potMatches ...T) bool {
 	for _, m := range potMatches {
