@@ -76,7 +76,7 @@ func NewCsv(options ...CsvOptions) *Csv {
 func (c *Csv) NewReader(r io.Reader) *CsvReader {
 
 	cr := &CsvReader{
-		reader: bufio.NewReader(r),
+		reader: bufio.NewReaderSize(r, 100*1024),
 		state:  StateRead,
 		csv:    c,
 		cell:   make(Cell, 0, 1),
@@ -270,7 +270,7 @@ func (cr *CsvReader) Row() (row []string) {
 func (c *Csv) NewWriter(w io.Writer) *Writer {
 	cr := &Writer{
 		Comma: rune(c.options.Delimiter),
-		w:     bufio.NewWriterSize(w, 40960),
+		w:     bufio.NewWriterSize(w, 100*1024),
 		bytes: 0,
 	}
 	return cr
