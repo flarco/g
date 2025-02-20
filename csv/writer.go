@@ -43,6 +43,15 @@ func NewWriter(w io.Writer) *Writer {
 	}
 }
 
+// NewWriterSize returns a new Writer that writes to w, along with buffer size.
+func NewWriterSize(w io.Writer, size int) *Writer {
+	return &Writer{
+		Comma: ',',
+		w:     bufio.NewWriterSize(w, size),
+		bytes: 0,
+	}
+}
+
 // Write writes a single CSV record to w along with any necessary quoting.
 // A record is a slice of strings with each string being one field.
 // Writes are buffered, so Flush must eventually be called to ensure
