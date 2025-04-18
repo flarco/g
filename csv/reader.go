@@ -170,7 +170,8 @@ type Reader struct {
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		Comma: ',',
-		r:     bufio.NewReader(r),
+		// r:     bufio.NewReader(r),
+		r: bufio.NewReaderSize(r, 256*1024),
 	}
 }
 
