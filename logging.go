@@ -93,6 +93,7 @@ func SetLogLevel(level Level) {
 type LogLine struct {
 	Time  time.Time     `json:"time,omitempty"`
 	Level zerolog.Level `json:"level,omitempty"`
+	Group string        `json:"group,omitempty"`
 	Text  string        `json:"text,omitempty"`
 	Args  []any         `json:"args,omitempty"`
 }
