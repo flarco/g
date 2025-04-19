@@ -123,6 +123,16 @@ func (ll *LogLine) Line() string {
 	return F(timeText+levelPrefix+ll.Text, ll.Args...)
 }
 
+type LogLines []LogLine
+
+func (lls LogLines) Lines() (lines []string) {
+	lines = make([]string, len(lls))
+	for _, ll := range lls {
+		lines = append(lines, ll.Line())
+	}
+	return lines
+}
+
 // NewLogHook return a new log hook
 func NewLogHook(level Level, f func(*LogLine)) *LogHook {
 	zLevel := zerolog.InfoLevel

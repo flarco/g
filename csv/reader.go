@@ -171,7 +171,7 @@ func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		Comma: ',',
 		// r:     bufio.NewReader(r),
-		r: bufio.NewReaderSize(r, 256*1024),
+		r: bufio.NewReaderSize(r, 128*1024),
 	}
 }
 
