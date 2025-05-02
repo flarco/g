@@ -38,7 +38,7 @@ type SlackBlock struct {
 	Type      string        `json:"type"`
 	BlockID   string        `json:"block_id,omitempty"`
 	Text      *SlackText    `json:"text,omitempty"`
-	Fields    []SlackText   `json:"fields,omitempty"`
+	Fields    []*SlackText  `json:"fields,omitempty"`
 	Elements  []interface{} `json:"elements,omitempty"`
 	Accessory interface{}   `json:"accessory,omitempty"`
 	Title     *SlackText    `json:"title,omitempty"`
@@ -59,6 +59,28 @@ type SlackField struct {
 	Type  string `json:"type"`
 	Text  string `json:"text"`
 	Emoji bool   `json:"emoji,omitempty"`
+}
+
+// SlackButtonElement represents a button element in Block Kit
+// See https://api.slack.com/reference/block-kit/block-elements#button
+type SlackButtonElement struct {
+	Type     string        `json:"type"` // always "button"
+	Text     SlackText     `json:"text"`
+	ActionID string        `json:"action_id,omitempty"`
+	URL      string        `json:"url,omitempty"`
+	Value    string        `json:"value,omitempty"`
+	Style    string        `json:"style,omitempty"` // "primary" or "danger"
+	Confirm  *SlackConfirm `json:"confirm,omitempty"`
+}
+
+// SlackConfirm represents a confirmation dialog object for buttons
+// See https://api.slack.com/reference/block-kit/composition-objects#confirm
+type SlackConfirm struct {
+	Title   SlackText `json:"title"`
+	Text    SlackText `json:"text"`
+	Confirm SlackText `json:"confirm"`
+	Deny    SlackText `json:"deny"`
+	Style   string    `json:"style,omitempty"` // "primary" or "danger"
 }
 
 // SlackSection is a helper struct for creating section blocks
@@ -123,9 +145,9 @@ func (m *SlackMessage) AddSection(section *SlackSection) {
 	}
 
 	if len(section.Fields) > 0 {
-		fields := make([]SlackText, len(section.Fields))
+		fields := make([]*SlackText, len(section.Fields))
 		for i, f := range section.Fields {
-			fields[i] = SlackText{
+			fields[i] = &SlackText{
 				Type: "mrkdwn",
 				Text: f.Text,
 			}
@@ -147,6 +169,9 @@ func (sc *SlackClient) Send(msg SlackMessage) (err error) {
 		map[string]string{"Content-Type": "application/json"},
 		5,
 	)
+	if err != nil {
+		return err
+	}
 
 	if string(respBytes) != "ok" {
 		return g.Error("Non-ok response returned from Slack")

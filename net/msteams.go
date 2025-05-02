@@ -26,6 +26,7 @@ type MsTeamsMessage struct {
 // MsTeamsMessageSection is a MS Teams message section
 type MsTeamsMessageSection struct {
 	ActivityTitle    string               `json:"activityTitle,omitempty"`
+	Text             string               `json:"text,omitempty"`
 	ActivitySubtitle string               `json:"activitySubtitle,omitempty"`
 	ActivityImage    string               `json:"activityImage,omitempty"`
 	Facts            []MsTeamsSectionFact `json:"facts,omitempty"`
