@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -1022,4 +1023,135 @@ func IsNil(val any) bool {
 		}
 	}
 	return false
+}
+
+// MarshalOrdered marshals an interface into json with sorted keys for deterministic output
+// BenchmarkMarshalOrdered/SmallMap-Standard-10         	 1000000	      1045 ns/op	     525 B/op	      12 allocs/op
+// BenchmarkMarshalOrdered/SmallMap-Ordered-10          	 1000000	      1116 ns/op	     296 B/op	      17 allocs/op
+// BenchmarkMarshalOrdered/MediumMap-Standard-10        	  596228	      3219 ns/op	    1386 B/op	      30 allocs/op
+// BenchmarkMarshalOrdered/MediumMap-Ordered-10         	  578047	      2630 ns/op	    1128 B/op	      41 allocs/op
+// BenchmarkMarshalOrdered/LargeMap-Standard-10         	  115510	      9226 ns/op	    5303 B/op	     113 allocs/op
+// BenchmarkMarshalOrdered/LargeMap-Ordered-10          	  158793	      8507 ns/op	    4739 B/op	     154 allocs/op
+func MarshalOrdered(val any) (string, error) {
+	switch v := val.(type) {
+	case map[string]interface{}:
+		return marshalOrderedMap(v)
+	case Map:
+		return marshalOrderedMap(map[string]interface{}(v))
+	default:
+		// If not a map type, use regular marshaling
+		bytes, err := json.Marshal(val)
+		if err != nil {
+			return "", Error(err, "failed to marshal value")
+		}
+		return string(bytes), nil
+	}
+}
+
+func marshalOrderedMap(m map[string]interface{}) (string, error) {
+	// Get all keys and sort them
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// Build ordered map with nested ordering
+	var b strings.Builder
+	b.WriteString("{")
+
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteString(",")
+		}
+
+		// Marshal the key
+		keyBytes, err := json.Marshal(k)
+		if err != nil {
+			return "", Error(err, "failed to marshal key")
+		}
+		b.Write(keyBytes)
+		b.WriteString(":")
+
+		// Handle the value based on its type
+		switch vv := m[k].(type) {
+		case map[string]interface{}:
+			// If value is a map, recursively order it
+			ordered, err := marshalOrderedMap(vv)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(ordered)
+		case Map:
+			// If value is a Map type, convert and order it
+			ordered, err := marshalOrderedMap(map[string]interface{}(vv))
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(ordered)
+		case []interface{}:
+			// For arrays, need to check for nested maps
+			arrayBytes, err := marshalOrderedArray(vv)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(arrayBytes)
+		default:
+			// Regular value, use standard marshaling
+			valueBytes, err := json.Marshal(vv)
+			if err != nil {
+				return "", Error(err, "failed to marshal value")
+			}
+			b.Write(valueBytes)
+		}
+	}
+
+	b.WriteString("}")
+	return b.String(), nil
+}
+
+func marshalOrderedArray(arr []interface{}) (string, error) {
+	var b strings.Builder
+	b.WriteString("[")
+
+	for i, v := range arr {
+		if i > 0 {
+			b.WriteString(",")
+		}
+
+		// Handle the value based on its type
+		switch vv := v.(type) {
+		case map[string]interface{}:
+			// If value is a map, recursively order it
+			ordered, err := marshalOrderedMap(vv)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(ordered)
+		case Map:
+			// If value is a Map type, convert and order it
+			ordered, err := marshalOrderedMap(map[string]interface{}(vv))
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(ordered)
+		case []interface{}:
+			// For nested arrays, recurse
+			nestedArrayBytes, err := marshalOrderedArray(vv)
+			if err != nil {
+				return "", err
+			}
+			b.WriteString(nestedArrayBytes)
+		default:
+			// Regular value, use standard marshaling
+			valueBytes, err := json.Marshal(vv)
+			if err != nil {
+				return "", Error(err, "failed to marshal array value")
+			}
+			b.Write(valueBytes)
+		}
+	}
+
+	b.WriteString("]")
+	return b.String(), nil
 }

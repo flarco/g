@@ -251,3 +251,256 @@ func TestLoggerColor(t *testing.T) {
 	println(Colorize(ColorBold, "ColorBold"))
 	println(Colorize(ColorDarkGray, "ColorDarkGray"))
 }
+
+func TestMarshalOrdered(t *testing.T) {
+	// Test with non-map values
+	str, err := MarshalOrdered("hello")
+	assert.NoError(t, err)
+	assert.Equal(t, `"hello"`, str)
+
+	num, err := MarshalOrdered(42)
+	assert.NoError(t, err)
+	assert.Equal(t, `42`, num)
+
+	// Test with simple maps in different orders
+	map1 := map[string]interface{}{
+		"a": 1,
+		"c": 3,
+		"b": 2,
+	}
+
+	map2 := map[string]interface{}{
+		"c": 3,
+		"b": 2,
+		"a": 1,
+	}
+
+	str1, err := MarshalOrdered(map1)
+	assert.NoError(t, err)
+	str2, err := MarshalOrdered(map2)
+	assert.NoError(t, err)
+	assert.Equal(t, str1, str2)
+	assert.Equal(t, `{"a":1,"b":2,"c":3}`, str1)
+
+	// Test with nested maps
+	nestedMap1 := map[string]interface{}{
+		"x": map[string]interface{}{
+			"z": 1,
+			"y": 2,
+		},
+		"a": 3,
+	}
+
+	nestedMap2 := map[string]interface{}{
+		"a": 3,
+		"x": map[string]interface{}{
+			"y": 2,
+			"z": 1,
+		},
+	}
+
+	nestedStr1, err := MarshalOrdered(nestedMap1)
+	assert.NoError(t, err)
+	nestedStr2, err := MarshalOrdered(nestedMap2)
+	assert.NoError(t, err)
+	assert.Equal(t, nestedStr1, nestedStr2)
+	assert.Equal(t, `{"a":3,"x":{"y":2,"z":1}}`, nestedStr1)
+
+	// Test with array containing maps
+	arrMap1 := map[string]interface{}{
+		"arr": []interface{}{
+			map[string]interface{}{"b": 2, "a": 1},
+			map[string]interface{}{"d": 4, "c": 3},
+		},
+	}
+
+	arrMap2 := map[string]interface{}{
+		"arr": []interface{}{
+			map[string]interface{}{"a": 1, "b": 2},
+			map[string]interface{}{"c": 3, "d": 4},
+		},
+	}
+
+	arrStr1, err := MarshalOrdered(arrMap1)
+	assert.NoError(t, err)
+	arrStr2, err := MarshalOrdered(arrMap2)
+	assert.NoError(t, err)
+	assert.Equal(t, arrStr1, arrStr2)
+	assert.Equal(t, `{"arr":[{"a":1,"b":2},{"c":3,"d":4}]}`, arrStr1)
+
+	// Test with custom Map type
+	customMap1 := Map{
+		"foo": "bar",
+		"baz": 123,
+	}
+
+	customMap2 := Map{
+		"baz": 123,
+		"foo": "bar",
+	}
+
+	customStr1, err := MarshalOrdered(customMap1)
+	assert.NoError(t, err)
+	customStr2, err := MarshalOrdered(customMap2)
+	assert.NoError(t, err)
+	assert.Equal(t, customStr1, customStr2)
+	assert.Equal(t, `{"baz":123,"foo":"bar"}`, customStr1)
+
+	// Test deterministic ordering from JSON payload
+	jsonPayload := `{
+		"metadata": {
+			"tags": ["tag3", "tag1", "tag2"],
+			"created": "2023-06-01",
+			"nested": {
+				"z": 3,
+				"y": 2,
+				"x": 1,
+				"array": [
+					{"c": 3, "a": 1, "b": 2},
+					{"f": 6, "e": 5, "d": 4}
+				]
+			}
+		},
+		"config": {
+			"timeout": 500,
+			"enabled": true
+		},
+		"id": 42,
+		"values": [5, 4, 3, 2, 1]
+	}`
+
+	// Create a baseline ordered string
+	var baseMap map[string]interface{}
+	err = json.Unmarshal([]byte(jsonPayload), &baseMap)
+	assert.NoError(t, err)
+	baseOrdered, err := MarshalOrdered(baseMap)
+	assert.NoError(t, err)
+
+	// Verify the exact expected value with ordered keys
+	expectedJSON := `{"config":{"enabled":true,"timeout":500},"id":42,"metadata":{"created":"2023-06-01","nested":{"array":[{"a":1,"b":2,"c":3},{"d":4,"e":5,"f":6}],"x":1,"y":2,"z":3},"tags":["tag3","tag1","tag2"]},"values":[5,4,3,2,1]}`
+	assert.Equal(t, expectedJSON, baseOrdered, "The ordered JSON doesn't match the expected value")
+
+	// Test multiple iterations with different unmarshaling order to ensure determinism
+	for i := 0; i < 100; i++ {
+		var iterMap map[string]interface{}
+		err = json.Unmarshal([]byte(jsonPayload), &iterMap)
+		assert.NoError(t, err)
+
+		// Simulate different insertion order by manipulating the map
+		// (Go maps have random iteration order)
+		tempMap := map[string]interface{}{}
+		for k, v := range iterMap {
+			tempMap[k] = v
+		}
+
+		iterOrdered, err := MarshalOrdered(tempMap)
+		assert.NoError(t, err)
+		assert.Equal(t, baseOrdered, iterOrdered, "Iteration %d failed to produce deterministic output", i)
+	}
+}
+
+// BenchmarkMarshalOrdered benchmarks the MarshalOrdered function
+// go test -bench=BenchmarkMarshalOrdered -benchmem
+// go test -bench=BenchmarkMarshalOrdered -benchmem -benchtime=5s
+func BenchmarkMarshalOrdered(b *testing.B) {
+	// Small flat map
+	smallMap := map[string]interface{}{
+		"id":     1,
+		"name":   "item",
+		"value":  42.5,
+		"active": true,
+	}
+
+	// Medium map with some nesting
+	mediumMap := map[string]interface{}{
+		"id": 1,
+		"metadata": map[string]interface{}{
+			"created": "2023-06-01",
+			"updated": "2023-06-02",
+			"tags":    []string{"tag1", "tag2", "tag3"},
+		},
+		"values": []int{1, 2, 3, 4, 5},
+		"config": map[string]interface{}{
+			"enabled": true,
+			"timeout": 500,
+		},
+	}
+
+	// Large complex map with deeper nesting
+	largeMap := map[string]interface{}{
+		"id": "abc123",
+		"user": map[string]interface{}{
+			"id":    42,
+			"name":  "John Doe",
+			"email": "john@example.com",
+			"preferences": map[string]interface{}{
+				"theme":         "dark",
+				"notifications": true,
+				"language":      "en",
+			},
+		},
+		"items": []interface{}{
+			map[string]interface{}{"id": 1, "name": "Item 1"},
+			map[string]interface{}{"id": 2, "name": "Item 2"},
+			map[string]interface{}{"id": 3, "name": "Item 3", "metadata": map[string]interface{}{
+				"color": "blue",
+				"size":  "medium",
+			}},
+		},
+		"settings": map[string]interface{}{
+			"display": map[string]interface{}{
+				"width":  1920,
+				"height": 1080,
+				"mode":   "fullscreen",
+			},
+			"audio": map[string]interface{}{
+				"volume":  75,
+				"muted":   false,
+				"devices": []string{"speaker", "headphones"},
+			},
+			"network": map[string]interface{}{
+				"proxy": map[string]interface{}{
+					"enabled": false,
+					"address": "proxy.example.com",
+					"port":    8080,
+				},
+			},
+		},
+	}
+
+	b.Run("SmallMap-Standard", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = json.Marshal(smallMap)
+		}
+	})
+
+	b.Run("SmallMap-Ordered", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = MarshalOrdered(smallMap)
+		}
+	})
+
+	b.Run("MediumMap-Standard", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = json.Marshal(mediumMap)
+		}
+	})
+
+	b.Run("MediumMap-Ordered", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = MarshalOrdered(mediumMap)
+		}
+	})
+
+	b.Run("LargeMap-Standard", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = json.Marshal(largeMap)
+		}
+	})
+
+	b.Run("LargeMap-Ordered", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = MarshalOrdered(largeMap)
+		}
+	})
+}
