@@ -185,6 +185,16 @@ func SetLogHook(lh *LogHook) {
 	LogHooks = append(LogHooks, lh)
 }
 
+// RemoveLogHook removes a log hook
+func RemoveLogHook(lh *LogHook) {
+	for i, hook := range LogHooks {
+		if hook == lh {
+			LogHooks = append(LogHooks[:i], LogHooks[i+1:]...)
+			break
+		}
+	}
+}
+
 // IsDebug returns true is debug is low
 func IsDebug() bool {
 	return GetLogLevel() == DebugLevel || IsDebugLow()
