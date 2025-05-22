@@ -22,6 +22,7 @@ type CliSC struct {
 	AdditionalHelpAppend  string
 	Singular              string
 	Sc                    *flaggy.Subcommand
+	ScUsed                string // override sc used
 	Vals                  map[string]interface{}
 	PosFlags              []Flag
 	Flags                 []Flag
@@ -309,6 +310,9 @@ func (c *CliSC) ListWhere() map[string]interface{} {
 func (c *CliSC) UsedSC() string {
 	if c == nil || c.Sc == nil {
 		return ""
+	}
+	if c.ScUsed != "" {
+		return c.ScUsed
 	}
 
 	for _, sc2 := range c.Sc.Subcommands {
