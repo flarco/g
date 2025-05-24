@@ -457,10 +457,22 @@ func PrintFatal(E error, args ...interface{}) {
 	}
 }
 
+// deferOnFatal are cleanup function on fatal exit
+var deferOnFatal = []func(){}
+
+func DeferOnFatal(f func()) {
+	deferOnFatal = append(deferOnFatal, f)
+}
+
 // LogFatal handles logging of an error and exits, useful for reporting
 func LogFatal(E error, args ...interface{}) {
 	if E != nil {
 		PrintFatal(E, args...)
+
+		for _, f := range deferOnFatal {
+			f()
+		}
+
 		os.Exit(1)
 	}
 }
