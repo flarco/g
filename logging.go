@@ -91,18 +91,18 @@ func SetLogLevel(level Level) {
 }
 
 type LogLine struct {
-	Time  time.Time     `json:"time,omitempty"`
-	Level zerolog.Level `json:"level,omitempty"`
-	Group string        `json:"group,omitempty"`
-	Text  string        `json:"text,omitempty"`
-	Args  []any         `json:"args,omitempty"`
+	Time  time.Time `json:"time,omitempty"`
+	Level int8      `json:"level,omitempty"`
+	Group string    `json:"group,omitempty"`
+	Text  string    `json:"text,omitempty"`
+	Args  []any     `json:"args,omitempty"`
 }
 
 func (ll *LogLine) Line() string {
 	// construct log line like zerolog
 	var timeText, levelPrefix string
 
-	switch ll.Level {
+	switch zerolog.Level(ll.Level) {
 	case zerolog.TraceLevel:
 		levelPrefix = "\x1b[35mTRC\x1b[0m "
 	case zerolog.DebugLevel:
@@ -360,7 +360,7 @@ func doHooks(level zerolog.Level, text string, args []interface{}) {
 		if level >= hook.Level && hook.Func != nil {
 			hook.Func(&LogLine{
 				Time:  time.Now(),
-				Level: level,
+				Level: int8(level),
 				Text:  text,
 				Args:  args,
 			})
