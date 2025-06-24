@@ -71,7 +71,7 @@ var ZLogErr = zerolog.New(zerolog.ConsoleWriter{
 				levelColor = ll
 			}
 		}
-		return levelColor + " "
+		return levelColor
 	},
 }).With().Timestamp().Logger()
 
