@@ -11,7 +11,7 @@ require (
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
 	github.com/json-iterator/go v1.1.12
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/rs/zerolog v1.20.0
+	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.39.0
 	github.com/shirou/gopsutil/v3 v3.24.4
 	github.com/shirou/gopsutil/v4 v4.24.9
@@ -36,7 +36,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
