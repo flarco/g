@@ -66,15 +66,19 @@ var ZLogFormatLevel = func(i interface{}) string {
 	}
 	return levelColor
 }
+var ZLogFormatMessage = func(i interface{}) string {
+	return fmt.Sprintf("%s", i)
+}
 
 // ZLogOut is the non-error/normal logger
 var ZLogOut = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
 
 // ZLogErr is the error/debug logger
 var ZLogErr = zerolog.New(zerolog.ConsoleWriter{
-	Out:         os.Stderr,
-	TimeFormat:  "2006-01-02 15:04:05",
-	FormatLevel: ZLogFormatLevel,
+	Out:           os.Stderr,
+	TimeFormat:    "2006-01-02 15:04:05",
+	FormatLevel:   ZLogFormatLevel,
+	FormatMessage: ZLogFormatMessage,
 }).With().Timestamp().Logger()
 
 // CallerLevel is the stack caller information level
