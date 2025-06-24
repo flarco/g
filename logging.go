@@ -42,37 +42,39 @@ var LogHooks = []*LogHook{}
 // LogLevel is the log level
 var LogLevel = new(Level)
 
+var ZLogFormatLevel = func(i interface{}) string {
+	var levelColor string
+	if ll, ok := i.(string); ok {
+		switch ll {
+		case zerolog.LevelTraceValue:
+			levelColor = Colorize(ColorMagenta, "TRC")
+		case zerolog.LevelDebugValue:
+			levelColor = Colorize(ColorYellow, "DBG")
+		case zerolog.LevelInfoValue:
+			levelColor = Colorize(ColorGreen, "INF")
+		case zerolog.LevelWarnValue:
+			levelColor = Colorize(ColorRed, "WRN")
+		case zerolog.LevelErrorValue:
+			levelColor = Colorize(ColorRed, "ERR")
+		case zerolog.LevelFatalValue:
+			levelColor = Colorize(ColorRed, "FTL")
+		case zerolog.LevelPanicValue:
+			levelColor = Colorize(ColorRed, "PNC")
+		default:
+			levelColor = ll
+		}
+	}
+	return levelColor
+}
+
 // ZLogOut is the non-error/normal logger
 var ZLogOut = zerolog.New(zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "2006-01-02 15:04:05"}).With().Timestamp().Logger()
 
 // ZLogErr is the error/debug logger
 var ZLogErr = zerolog.New(zerolog.ConsoleWriter{
-	Out:        os.Stderr,
-	TimeFormat: "2006-01-02 15:04:05",
-	FormatLevel: func(i interface{}) string {
-		var levelColor string
-		if ll, ok := i.(string); ok {
-			switch ll {
-			case zerolog.LevelTraceValue:
-				levelColor = Colorize(ColorMagenta, "TRC")
-			case zerolog.LevelDebugValue:
-				levelColor = Colorize(ColorYellow, "DBG")
-			case zerolog.LevelInfoValue:
-				levelColor = Colorize(ColorGreen, "INF")
-			case zerolog.LevelWarnValue:
-				levelColor = Colorize(ColorRed, "WRN")
-			case zerolog.LevelErrorValue:
-				levelColor = Colorize(ColorRed, "ERR")
-			case zerolog.LevelFatalValue:
-				levelColor = Colorize(ColorRed, "FTL")
-			case zerolog.LevelPanicValue:
-				levelColor = Colorize(ColorRed, "PNC")
-			default:
-				levelColor = ll
-			}
-		}
-		return levelColor
-	},
+	Out:         os.Stderr,
+	TimeFormat:  "2006-01-02 15:04:05",
+	FormatLevel: ZLogFormatLevel,
 }).With().Timestamp().Logger()
 
 // CallerLevel is the stack caller information level
