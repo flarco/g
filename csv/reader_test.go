@@ -20,7 +20,7 @@ func TestRead(t *testing.T) {
 		Error  error
 
 		// These fields are copied into the Reader
-		Comma              rune
+		Comma              string
 		Comment            rune
 		UseFieldsPerRecord bool // false (default) means FieldsPerRecord is -1
 		FieldsPerRecord    int
@@ -63,7 +63,7 @@ zzz,yyy,xxx
 		Name:   "Semicolon",
 		Input:  "a;b;c\n",
 		Output: [][]string{{"a", "b", "c"}},
-		Comma:  ';',
+		Comma:  ";",
 	}, {
 		Name: "MultiLine",
 		Input: `"two
@@ -288,13 +288,13 @@ x,,,
 		Input:            "a£b,c£ \td,e\n€ comment\n",
 		Output:           [][]string{{"a", "b,c", "d,e"}},
 		TrimLeadingSpace: true,
-		Comma:            '£',
+		Comma:            "£",
 		Comment:          '€',
 	}, {
 		Name:    "NonASCIICommaAndCommentWithQuotes",
 		Input:   "a€\"  b,\"€ c\nλ comment\n",
 		Output:  [][]string{{"a", "  b,", " c"}},
-		Comma:   '€',
+		Comma:   "€",
 		Comment: 'λ',
 	}, {
 		// λ and θ start with the same byte.
@@ -302,7 +302,7 @@ x,,,
 		Name:    "NonASCIICommaConfusion",
 		Input:   "\"abθcd\"λefθgh",
 		Output:  [][]string{{"abθcd", "efθgh"}},
-		Comma:   'λ',
+		Comma:   "λ",
 		Comment: '€',
 	}, {
 		Name:    "NonASCIICommentConfusion",
@@ -351,19 +351,19 @@ x,,,
 		LazyQuotes: true,
 	}, {
 		Name:  "BadComma1",
-		Comma: '\n',
+		Comma: "\n",
 		Error: errInvalidDelim,
 	}, {
 		Name:  "BadComma2",
-		Comma: '\r',
+		Comma: "\r",
 		Error: errInvalidDelim,
 	}, {
 		Name:  "BadComma3",
-		Comma: '"',
+		Comma: "\"",
 		Error: errInvalidDelim,
 	}, {
 		Name:  "BadComma4",
-		Comma: utf8.RuneError,
+		Comma: string(utf8.RuneError),
 		Error: errInvalidDelim,
 	}, {
 		Name:    "BadComment1",
@@ -379,7 +379,7 @@ x,,,
 		Error:   errInvalidDelim,
 	}, {
 		Name:    "BadCommaComment",
-		Comma:   'X',
+		Comma:   "X",
 		Comment: 'X',
 		Error:   errInvalidDelim,
 	}}
@@ -388,7 +388,7 @@ x,,,
 		t.Run(tt.Name, func(t *testing.T) {
 			r := NewReader(strings.NewReader(tt.Input))
 
-			if tt.Comma != 0 {
+			if tt.Comma != "" {
 				r.Comma = tt.Comma
 			}
 			r.Comment = tt.Comment

@@ -50,7 +50,7 @@ func TestCsvReader2(t *testing.T) {
 column1_data|"column2 data with \"space\""|column3_data
 "column1_data"|"column2 data with \"space\""|column3_data`
 
-	c := NewCsv(CsvOptions{Delimiter: '|', Escape: '\\'})
+	c := NewCsv(CsvOptions{Delimiter: "|", Escape: '\\'})
 
 	r := c.NewReader(strings.NewReader(in))
 
@@ -83,7 +83,7 @@ func TestCsvReader3(t *testing.T) {
 2,Terrell,"EKOZ,989",tmee1@example.com,true,2019-08-19 17:02:09.000,89.983,2
 `
 
-	c := NewCsv(CsvOptions{Delimiter: ',', Escape: '"'})
+	c := NewCsv(CsvOptions{Delimiter: ",", Escape: '"'})
 
 	r := c.NewReader(strings.NewReader(in))
 
@@ -113,7 +113,7 @@ func TestCsvReader3(t *testing.T) {
 func TestCsvReader4(t *testing.T) {
 	in := "c1,c2,c3\r\n1,2,3\r\n4,5,6\n7,\"\",8"
 
-	c := NewCsv(CsvOptions{Delimiter: ',', Escape: '"'})
+	c := NewCsv(CsvOptions{Delimiter: ",", Escape: '"'})
 
 	r := c.NewReader(strings.NewReader(in))
 
@@ -147,7 +147,7 @@ func TestCsvReader5(t *testing.T) {
 1,"2",""
 4,",""",5`
 
-	c := NewCsv(CsvOptions{Delimiter: ',', Escape: '"'})
+	c := NewCsv(CsvOptions{Delimiter: ",", Escape: '"'})
 
 	r := c.NewReader(strings.NewReader(in))
 
@@ -184,7 +184,7 @@ func TestCsvReader6(t *testing.T) {
 Em contato com o proprietário foi informado que Aceitou receber orçamentos e pediu contato das empresas através do WhatsApp (11)11111111111
 -ARQUITETO: MILTON MILTON MILTON   e-mail: arq.1111111111@gmail.com"`
 
-	c := NewCsv(CsvOptions{Delimiter: ';', Escape: '"'})
+	c := NewCsv(CsvOptions{Delimiter: ";", Escape: '"'})
 
 	r := c.NewReader(strings.NewReader(in))
 
@@ -208,6 +208,40 @@ Em contato com o proprietário foi informado que Aceitou receber orçamentos e p
 		assert.Equal(t, 19, len(rows[0]))
 	}
 
+}
+
+func TestCsvReaderMultiCharDelimiter(t *testing.T) {
+	in := `id::name::age::city
+1::John Doe::30::New York
+2::"Jane::Smith"::25::Los Angeles
+3::Bob Johnson::35::"San::Francisco"`
+
+	c := NewCsv(CsvOptions{Delimiter: "::", Escape: '"'})
+
+	r := c.NewReader(strings.NewReader(in))
+
+	rows := [][]string{}
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		rows = append(rows, record)
+
+		fmt.Println(g.Marshal(record))
+		println()
+	}
+
+	if assert.Equal(t, 4, len(rows)) {
+		assert.Equal(t, `["id","name","age","city"]`, g.Marshal(rows[0]))
+		assert.Equal(t, `["1","John Doe","30","New York"]`, g.Marshal(rows[1]))
+		assert.Equal(t, `["2","Jane::Smith","25","Los Angeles"]`, g.Marshal(rows[2]))
+		assert.Equal(t, `["3","Bob Johnson","35","San::Francisco"]`, g.Marshal(rows[3]))
+	}
 }
 
 // benchmarkReadNew measures reading the provided CSV rows data.
@@ -266,4 +300,14 @@ xxxxxxxxxxxxxxxxxxxxxxxx,yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,zzzzzzzzzzzzzzzzzzzzzz
 ,,zzzz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww,vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww,vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 `, 3))
+}
+
+func BenchmarkReadNewMultiCharDelimiter(b *testing.B) {
+	data := strings.Repeat("field1::field2::field3::field4::field5::field6::field7::field8::field9::field10\n", 100)
+	benchmarkReadNew(b, CsvOptions{Delimiter: "::"}, data)
+}
+
+func BenchmarkReadNewThreeCharDelimiter(b *testing.B) {
+	data := strings.Repeat("field1|||field2|||field3|||field4|||field5|||field6|||field7|||field8|||field9|||field10\n", 100)
+	benchmarkReadNew(b, CsvOptions{Delimiter: "|||"}, data)
 }

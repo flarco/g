@@ -15,7 +15,7 @@ var writeTests = []struct {
 	Output  string
 	Error   error
 	UseCRLF bool
-	Comma   rune
+	Comma   string
 }{
 	{Input: [][]string{{"abc"}}, Output: "abc\n"},
 	{Input: [][]string{{"abc"}}, Output: "abc\r\n", UseCRLF: true},
@@ -43,9 +43,9 @@ var writeTests = []struct {
 	{Input: [][]string{{`\.`}}, Output: "\"\\.\"\n"},
 	{Input: [][]string{{"x09\x41\xb4\x1c", "aktau"}}, Output: "x09\x41\xb4\x1c,aktau\n"},
 	{Input: [][]string{{",x09\x41\xb4\x1c", "aktau"}}, Output: "\",x09\x41\xb4\x1c\",aktau\n"},
-	{Input: [][]string{{"a", "a", ""}}, Output: "a|a|\n", Comma: '|'},
-	{Input: [][]string{{",", ",", ""}}, Output: ",|,|\n", Comma: '|'},
-	{Input: [][]string{{"foo"}}, Comma: '"', Error: errInvalidDelim},
+	{Input: [][]string{{"a", "a", ""}}, Output: "a|a|\n", Comma: "|"},
+	{Input: [][]string{{",", ",", ""}}, Output: ",|,|\n", Comma: "|"},
+	{Input: [][]string{{"foo"}}, Comma: "\"", Error: errInvalidDelim},
 }
 
 func TestWrite(t *testing.T) {
@@ -53,7 +53,7 @@ func TestWrite(t *testing.T) {
 		b := &bytes.Buffer{}
 		f := NewWriter(b)
 		f.UseCRLF = tt.UseCRLF
-		if tt.Comma != 0 {
+		if tt.Comma != "" {
 			f.Comma = tt.Comma
 		}
 		err := f.WriteAll(tt.Input)

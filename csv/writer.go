@@ -28,8 +28,8 @@ import (
 // the underlying io.Writer.  Any errors that occurred should
 // be checked by calling the Error method.
 type Writer struct {
-	Comma   rune // Field delimiter (set to ',' by NewWriter)
-	UseCRLF bool // True to use \r\n as the line terminator
+	Comma   string // Field delimiter (set to ',' by NewWriter)
+	UseCRLF bool   // True to use \r\n as the line terminator
 	w       *bufio.Writer
 	bytes   int
 }
@@ -37,7 +37,7 @@ type Writer struct {
 // NewWriter returns a new Writer that writes to w.
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
-		Comma: ',',
+		Comma: ",",
 		w:     bufio.NewWriterSize(w, 40960),
 		bytes: 0,
 	}
@@ -46,7 +46,7 @@ func NewWriter(w io.Writer) *Writer {
 // NewWriterSize returns a new Writer that writes to w, along with buffer size.
 func NewWriterSize(w io.Writer, size int) *Writer {
 	return &Writer{
-		Comma: ',',
+		Comma: ",",
 		w:     bufio.NewWriterSize(w, size),
 		bytes: 0,
 	}
@@ -66,7 +66,7 @@ func (w *Writer) Write(record []string) (tbw int, err error) {
 
 	for n, field := range record {
 		if n > 0 {
-			bw, err := w.w.WriteRune(w.Comma)
+			bw, err := w.w.WriteString(w.Comma)
 			tbw = tbw + bw
 			if err != nil {
 				return tbw, err
@@ -196,17 +196,8 @@ func (w *Writer) fieldNeedsQuotes(field string) bool {
 		return true
 	}
 
-	if w.Comma < utf8.RuneSelf {
-		for i := 0; i < len(field); i++ {
-			c := field[i]
-			if c == '\n' || c == '\r' || c == '"' || c == byte(w.Comma) {
-				return true
-			}
-		}
-	} else {
-		if strings.ContainsRune(field, w.Comma) || strings.ContainsAny(field, "\"\r\n") {
-			return true
-		}
+	if strings.Contains(field, w.Comma) || strings.ContainsAny(field, "\"\r\n") {
+		return true
 	}
 
 	r1, _ := utf8.DecodeRuneInString(field)

@@ -18,8 +18,8 @@ func Fuzz(data []byte) int {
 
 	for _, tt := range []Reader{
 		{},
-		{Comma: ';'},
-		{Comma: '\t'},
+		{Comma: ";"},
+		{Comma: "\t"},
 		{LazyQuotes: true},
 		{TrimLeadingSpace: true},
 		{Comment: '#'},

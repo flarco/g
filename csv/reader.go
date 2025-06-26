@@ -57,6 +57,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -92,8 +93,17 @@ var (
 
 var errInvalidDelim = errors.New("csv: invalid field or comment delimiter")
 
-func validDelim(r rune) bool {
-	return r != 0 && r != '"' && r != '\r' && r != '\n' && utf8.ValidRune(r) && r != utf8.RuneError
+func validDelim(s string) bool {
+	if s == "" || strings.ContainsAny(s, "\"\r\n") {
+		return false
+	}
+	// Check all runes are valid
+	for _, r := range s {
+		if !utf8.ValidRune(r) || r == utf8.RuneError {
+			return false
+		}
+	}
+	return true
 }
 
 // A Reader reads records from a CSV-encoded file.
@@ -108,9 +118,9 @@ func validDelim(r rune) bool {
 type Reader struct {
 	// Comma is the field delimiter.
 	// It is set to comma (',') by NewReader.
-	// Comma must be a valid rune and must not be \r, \n,
+	// Comma must be a valid string and must not contain \r, \n,
 	// or the Unicode replacement character (0xFFFD).
-	Comma rune
+	Comma string
 
 	// Comment, if not 0, is the comment character. Lines beginning with the
 	// Comment character without preceding whitespace are ignored.
@@ -169,7 +179,7 @@ type Reader struct {
 // NewReader returns a new Reader that reads from r.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		Comma: ',',
+		Comma: ",",
 		// r:     bufio.NewReader(r),
 		r: bufio.NewReaderSize(r, 128*1024),
 	}
@@ -256,7 +266,11 @@ func nextRune(b []byte) rune {
 }
 
 func (r *Reader) readRecord(dst []string) ([]string, error) {
-	if r.Comma == r.Comment || !validDelim(r.Comma) || (r.Comment != 0 && !validDelim(r.Comment)) {
+	if !validDelim(r.Comma) || (r.Comment != 0 && (!utf8.ValidRune(r.Comment) || r.Comment == utf8.RuneError || r.Comment == '\r' || r.Comment == '\n')) {
+		return nil, errInvalidDelim
+	}
+	// Check that Comma doesn't contain the Comment rune
+	if r.Comment != 0 && strings.ContainsRune(r.Comma, r.Comment) {
 		return nil, errInvalidDelim
 	}
 
@@ -283,7 +297,8 @@ func (r *Reader) readRecord(dst []string) ([]string, error) {
 	// Parse each field in the record.
 	var err error
 	const quoteLen = len(`"`)
-	commaLen := utf8.RuneLen(r.Comma)
+	commaLen := len(r.Comma)
+	commaBytes := []byte(r.Comma)
 	recLine := r.numLine // Starting line for record
 	r.recordBuffer = r.recordBuffer[:0]
 	r.fieldIndexes = r.fieldIndexes[:0]
@@ -294,7 +309,7 @@ parseField:
 		}
 		if len(line) == 0 || line[0] != '"' {
 			// Non-quoted string field
-			i := bytes.IndexRune(line, r.Comma)
+			i := bytes.Index(line, commaBytes)
 			field := line
 			if i >= 0 {
 				field = field[:i]
@@ -325,12 +340,12 @@ parseField:
 					// Hit next quote.
 					r.recordBuffer = append(r.recordBuffer, line[:i]...)
 					line = line[i+quoteLen:]
-					switch rn := nextRune(line); {
-					case rn == '"':
+					switch {
+					case len(line) > 0 && line[0] == '"':
 						// `""` sequence (append quote).
 						r.recordBuffer = append(r.recordBuffer, '"')
 						line = line[quoteLen:]
-					case rn == r.Comma:
+					case len(line) >= commaLen && bytes.HasPrefix(line, commaBytes):
 						// `",` sequence (end of field).
 						line = line[commaLen:]
 						r.fieldIndexes = append(r.fieldIndexes, len(r.recordBuffer))

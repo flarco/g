@@ -18,7 +18,7 @@ type Csv struct {
 }
 
 type CsvOptions struct {
-	Delimiter byte
+	Delimiter string
 	Quote     byte
 	NewLine   byte
 	Header    bool
@@ -61,8 +61,8 @@ func NewCsv(options ...CsvOptions) *Csv {
 	if opts.Quote == 0 {
 		opts.Quote = '"'
 	}
-	if opts.Delimiter == 0 {
-		opts.Delimiter = ','
+	if opts.Delimiter == "" {
+		opts.Delimiter = ","
 	}
 	if opts.Escape == 0 {
 		opts.Escape = '"'
@@ -180,20 +180,26 @@ func (cr *CsvReader) readLine(line []byte) (row []string, ok bool, err error) {
 		cr.lineBuffer.Write(line)
 	}
 
-	for i, char := range line {
+	delimBytes := []byte(cr.csv.options.Delimiter)
+	delimLen := len(delimBytes)
+	
+	i := 0
+	for i < len(line) {
+		char := line[i]
 		cr.column++
 
 		// if quote is escaped, continue, handled next loop
 		if cr.state == StateInQuote &&
 			char == cr.csv.options.Escape &&
-			len(line) > i+1 &&
+			i+1 < len(line) &&
 			line[i+1] == cr.csv.options.Quote {
 			cr.state = StateEscaping
+			i++
 			continue
 		}
 
-		switch char {
-		case cr.csv.options.Quote:
+		switch {
+		case char == cr.csv.options.Quote:
 			if cr.state == StateEscaping {
 				// if is escaped, new token, same cell
 				cr.endToken(cr.column - 1)
@@ -204,23 +210,29 @@ func (cr *CsvReader) readLine(line []byte) (row []string, ok bool, err error) {
 				cr.endToken(cr.column)
 				cr.endCell()
 				cr.state = StateRead
-			} else if i == 0 || line[i-1] == cr.csv.options.Delimiter {
+			} else if i == 0 || (i >= delimLen && string(line[i-delimLen:i]) == cr.csv.options.Delimiter) {
 				cr.state = StateInQuote
 				cr.endToken(cr.column)
 				cr.startToken(cr.column + 1)
 			}
-		case cr.csv.options.Delimiter:
+		case i+delimLen <= len(line) && string(line[i:i+delimLen]) == cr.csv.options.Delimiter:
 			if cr.state != StateInQuote {
 				cr.endToken(cr.column)
 				cr.endCell()
+				// Skip the delimiter length
+				for j := 1; j < delimLen; j++ {
+					i++
+					cr.column++
+				}
 				cr.startToken(cr.column + 1)
 			}
-		case cr.csv.options.NewLine:
+		case char == cr.csv.options.NewLine:
 			if cr.state != StateInQuote {
 				cr.endToken(cr.column)
 				cr.endCell()
 			}
 		}
+		i++
 	}
 	cr.line++
 
@@ -269,7 +281,7 @@ func (cr *CsvReader) Row() (row []string) {
 
 func (c *Csv) NewWriter(w io.Writer) *Writer {
 	cr := &Writer{
-		Comma: rune(c.options.Delimiter),
+		Comma: string(c.options.Delimiter),
 		w:     bufio.NewWriterSize(w, 100*1024),
 		bytes: 0,
 	}
