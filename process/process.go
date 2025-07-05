@@ -75,6 +75,7 @@ type Proc struct {
 	Done                         chan struct{} // finished with scanner
 	scanner                      *ScanConfig
 	printMux                     sync.Mutex
+	tempScriptFile               string // path to temp script file for cleanup
 }
 
 type ScanConfig struct {
@@ -196,6 +197,71 @@ func NewProc(bin string, args ...string) (p *Proc, err error) {
 	return
 }
 
+// NewScript creates a new process that runs a script with multiple commands
+// The script will exit on first error (equivalent to 'set -e' in bash)
+// The temporary script file is automatically cleaned up when CleanupScript() is called
+func NewScript(script string) (p *Proc, err error) {
+	var tmpFile *os.File
+	var content string
+	var bin string
+	var args []string
+
+	if runtime.GOOS == "windows" {
+		// Use PowerShell on Windows with error handling
+		tmpFile, err = os.CreateTemp("", "script_*.ps1")
+		if err != nil {
+			return nil, g.Error(err, "could not create temp PowerShell script file")
+		}
+
+		bin = "powershell"
+		args = []string{"-ExecutionPolicy", "Bypass", "-File", tmpFile.Name()}
+		content = fmt.Sprintf(`$ErrorActionPreference = "Stop"
+%s`, script)
+	} else {
+		// Use bash on Linux/Mac with error handling
+		tmpFile, err = os.CreateTemp("", "script_*.sh")
+		if err != nil {
+			return nil, g.Error(err, "could not create temp bash script file")
+		}
+
+		bin = "bash"
+		args = []string{tmpFile.Name()}
+		content = fmt.Sprintf(`#!/bin/bash
+set -e
+%s`, script)
+	}
+
+	// Write script content to temp file
+	_, err = tmpFile.WriteString(content)
+	if err != nil {
+		tmpFile.Close()
+		os.Remove(tmpFile.Name())
+		return nil, g.Error(err, "could not write to temp script file")
+	}
+	tmpFile.Close()
+
+	// Make executable on Unix systems
+	if runtime.GOOS != "windows" {
+		err = os.Chmod(tmpFile.Name(), 0755)
+		if err != nil {
+			os.Remove(tmpFile.Name())
+			return nil, g.Error(err, "could not make script executable")
+		}
+	}
+
+	// Create process
+	p, err = NewProc(bin, args...)
+	if err != nil {
+		os.Remove(tmpFile.Name())
+		return nil, g.Error(err, "could not create process for script")
+	}
+
+	// Store temp file path for cleanup
+	p.tempScriptFile = tmpFile.Name()
+
+	return p, nil
+}
+
 // String returns the command as a string
 func (p *Proc) String() string {
 	parts := []string{p.Bin}
@@ -219,6 +285,7 @@ func (p *Proc) SetArgs(args ...string) {
 	p.Args = args
 }
 
+// CloseStdin closes the stdin pipe
 func (p *Proc) CloseStdin() (err error) {
 	wc, ok := p.StdinWriter.(io.WriteCloser)
 	if ok {
@@ -226,6 +293,18 @@ func (p *Proc) CloseStdin() (err error) {
 		if err != nil {
 			return g.Error(err, "could not close StdinPipe")
 		}
+	}
+	return nil
+}
+
+// CleanupScript removes the temporary script file if it exists
+func (p *Proc) CleanupScript() error {
+	if p.tempScriptFile != "" {
+		err := os.Remove(p.tempScriptFile)
+		if err != nil && !os.IsNotExist(err) {
+			return g.Error(err, "could not remove temp script file")
+		}
+		p.tempScriptFile = ""
 	}
 	return nil
 }
@@ -427,6 +506,13 @@ func (p *Proc) Wait() error {
 			g.LogError(p.Cmd.Process.Kill())
 		}
 	}
+
+	// Clean up temporary script file if it exists
+	defer func() {
+		if p.tempScriptFile != "" {
+			g.LogError(p.CleanupScript())
+		}
+	}()
 
 	if p.Err != nil {
 		return p.Err

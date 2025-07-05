@@ -235,3 +235,127 @@ func TestGetParent(t *testing.T) {
 	assert.NotEmpty(t, parent.Name)
 	assert.NotEmpty(t, parent.Executable)
 }
+
+func TestNewScript(t *testing.T) {
+	// Test successful script execution
+	script := `echo "Hello, World!"
+echo "This is a test script"`
+
+	p, err := NewScript(script)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+
+	// Enable capture to get output
+	p.Capture = true
+
+	// Run the script
+	err = p.Run()
+	assert.NoError(t, err)
+
+	// Check output
+	output := p.Stdout.String()
+	assert.Contains(t, output, "Hello, World!")
+	assert.Contains(t, output, "This is a test script")
+
+	// Verify cleanup happened automatically
+	assert.Equal(t, "", p.tempScriptFile)
+}
+
+func TestNewScriptErrorHandling(t *testing.T) {
+	// Test script that should fail
+	var script string
+	if runtime.GOOS == "windows" {
+		script = `echo "Before error"
+throw "This should cause an error"
+echo "After error - should not be reached"`
+	} else {
+		script = `echo "Before error"
+false
+echo "After error - should not be reached"`
+	}
+
+	p, err := NewScript(script)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+
+	// Enable capture to get output
+	p.Capture = true
+
+	// Run the script - should fail
+	err = p.Run()
+	assert.Error(t, err)
+
+	// Check that first echo ran but second didn't
+	output := p.Combined.String()
+	assert.Contains(t, output, "Before error")
+	assert.NotContains(t, output, "After error - should not be reached")
+
+	// Verify cleanup happened automatically
+	assert.Equal(t, "", p.tempScriptFile)
+}
+
+func TestNewScriptMultipleCommands(t *testing.T) {
+	// Test script with multiple commands and environment variables
+	var script string
+	if runtime.GOOS == "windows" {
+		script = `$var = "test"
+echo "Variable: $var"
+echo "Current directory: $(Get-Location)"
+echo "Custom env var: $env:TEST_VAR"
+echo "Another env var: $env:ANOTHER_VAR" 
+echo "Script completed successfully"`
+	} else {
+		script = `var="test"
+echo "Variable: $var"
+echo "Current directory: $(pwd)"
+echo "Custom env var: $TEST_VAR"
+echo "Another env var: $ANOTHER_VAR"
+echo "Script completed successfully"`
+	}
+
+	p, err := NewScript(script)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+
+	p.Capture = true
+
+	// Set environment variables
+	p.Env = map[string]string{
+		"TEST_VAR":    "hello_world",
+		"ANOTHER_VAR": "environment_test",
+	}
+
+	err = p.Run()
+	assert.NoError(t, err)
+
+	output := p.Stdout.String()
+	assert.Contains(t, output, "Variable: test")
+	assert.Contains(t, output, "Current directory:")
+	assert.Contains(t, output, "Custom env var: hello_world")
+	assert.Contains(t, output, "Another env var: environment_test")
+	assert.Contains(t, output, "Script completed successfully")
+
+	// Verify cleanup happened automatically
+	assert.Equal(t, "", p.tempScriptFile)
+}
+
+func TestNewScriptManualCleanup(t *testing.T) {
+	// Test manual cleanup
+	script := `echo "Testing manual cleanup"`
+
+	p, err := NewScript(script)
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+
+	// Verify temp file path is set
+	assert.NotEmpty(t, p.tempScriptFile)
+
+	// Manual cleanup before running
+	err = p.CleanupScript()
+	assert.NoError(t, err)
+	assert.Empty(t, p.tempScriptFile)
+
+	// Running should still work (though it will fail because file is gone)
+	err = p.Run()
+	assert.Error(t, err) // Expected to fail since we cleaned up the script file
+}
