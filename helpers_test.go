@@ -504,3 +504,214 @@ func BenchmarkMarshalOrdered(b *testing.B) {
 		}
 	})
 }
+
+func TestReplace(t *testing.T) {
+	// Basic replacement
+	result := R("Hello {name}, you are {age} years old {other}", "name", "John", "age", "30")
+	assert.Equal(t, "Hello John, you are 30 years old {other}", result)
+
+	// Replacement with spaces around keys
+	result = R("Hello { name }, you are {  age  } years old", "name", "John", "age", "30")
+	assert.Equal(t, "Hello John, you are 30 years old", result)
+
+	// Mixed spacing
+	result = R("File {file} had error { error }", "file", "test.txt", "error", "not found")
+	assert.Equal(t, "File test.txt had error not found", result)
+
+	// Multiple occurrences of same key
+	result = R("User {user} logged in at {time}. User {user} has permissions.", "user", "admin", "time", "10:30")
+	assert.Equal(t, "User admin logged in at 10:30. User admin has permissions.", result)
+
+	// No matches
+	result = R("No placeholders here", "name", "John", "age", "30")
+	assert.Equal(t, "No placeholders here", result)
+
+	// Empty format string
+	result = R("", "name", "John")
+	assert.Equal(t, "", result)
+
+	// Empty args
+	result = R("Hello {name}")
+	assert.Equal(t, "Hello {name}", result)
+
+	// Odd number of args (should handle gracefully)
+	result = R("Hello {name}", "name", "John", "age")
+	assert.Equal(t, "Hello John", result)
+
+	// Special characters in keys
+	result = R("Value is {my-key}", "my-key", "test")
+	assert.Equal(t, "Value is test", result)
+
+	// Keys with dots
+	result = R("Config {app.name} version {app.version }", "app.name", "MyApp", "app.version", "1.0")
+	assert.Equal(t, "Config MyApp version 1.0", result)
+
+	// Different types of whitespace
+	result = R("Hello {\tname\n} and {  age  }", "name", "John", "age", "30")
+	assert.Equal(t, "Hello John and 30", result)
+
+	// Keys that don't exist
+	result = R("Hello {name}", "user", "John")
+	assert.Equal(t, "Hello {name}", result)
+
+	// Empty key
+	result = R("Hello {}", "", "John")
+	assert.Equal(t, "Hello John", result)
+
+	// Nested braces (will match inner pattern)
+	result = R("Hello {{name}}", "name", "John")
+	assert.Equal(t, "Hello {John}", result)
+
+	// Single brace (should not match)
+	result = R("Hello {name and age}", "name", "John")
+	assert.Equal(t, "Hello {name and age}", result)
+}
+
+func TestReplacem(t *testing.T) {
+	// Basic replacement
+	m := map[string]any{"name": "John", "age": 30}
+	result := Rm("Hello {name}, you are {age} years old", m)
+	assert.Equal(t, "Hello John, you are 30 years old", result)
+
+	// Replacement with spaces around keys
+	result = Rm("Hello { name }, you are {  age  } years old { other}", m)
+	assert.Equal(t, "Hello John, you are 30 years old { other}", result)
+
+	// Mixed spacing
+	m2 := map[string]any{"file": "test.txt", "error": "not found"}
+	result = Rm("File {file} had error { error }", m2)
+	assert.Equal(t, "File test.txt had error not found", result)
+
+	// Multiple occurrences of same key
+	m3 := map[string]any{"user": "admin", "time": "10:30"}
+	result = Rm("User {user} logged in at {time}. User {user} has permissions.", m3)
+	assert.Equal(t, "User admin logged in at 10:30. User admin has permissions.", result)
+
+	// No matches
+	result = Rm("No placeholders here", m)
+	assert.Equal(t, "No placeholders here", result)
+
+	// Empty format string
+	result = Rm("", m)
+	assert.Equal(t, "", result)
+
+	// Empty map
+	result = Rm("Hello {name}", map[string]any{})
+	assert.Equal(t, "Hello {name}", result)
+
+	// Nil map
+	result = Rm("Hello {name}", nil)
+	assert.Equal(t, "Hello {name}", result)
+
+	// Different value types
+	m4 := map[string]any{
+		"str":   "hello",
+		"int":   42,
+		"float": 3.14,
+		"bool":  true,
+		"nil":   nil,
+		"slice": []int{1, 2, 3},
+		"map":   map[string]int{"a": 1},
+	}
+	result = Rm("str:{str} int:{int} float:{float} bool:{bool} nil:{nil} slice:{slice} map:{map}", m4)
+	expected := "str:hello int:42 float:3.14 bool:true nil: slice:[1,2,3] map:{\"a\":1}"
+	assert.Equal(t, expected, result)
+
+	// Special characters in keys
+	m5 := map[string]any{"my-key": "test", "app.name": "MyApp"}
+	result = Rm("Value is {my-key} and app is {app.name}", m5)
+	assert.Equal(t, "Value is test and app is MyApp", result)
+
+	// Different types of whitespace
+	result = Rm("Hello {\tname\n} and {  age  }", m)
+	assert.Equal(t, "Hello John and 30", result)
+
+	// Keys that don't exist in map
+	result = Rm("Hello {name} and {missing}", map[string]any{"name": "John"})
+	assert.Equal(t, "Hello John and {missing}", result)
+
+	// Empty key
+	result = Rm("Hello {}", map[string]any{"": "World"})
+	assert.Equal(t, "Hello World", result)
+
+	// Nested braces (will match inner pattern)
+	result = Rm("Hello {{name}}", m)
+	assert.Equal(t, "Hello {John}", result)
+
+	// Single brace (should not match)
+	result = Rm("Hello {name and age}", m)
+	assert.Equal(t, "Hello {name and age}", result)
+
+	// Complex object that needs JSON marshaling
+	complexObj := struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}{ID: 1, Name: "test"}
+	m6 := map[string]any{"object": complexObj}
+	result = Rm("Object: {object}", m6)
+	assert.Contains(t, result, `"id":1`)
+	assert.Contains(t, result, `"name":"test"`)
+
+	// Test with cast.ToStringE failure scenario (should fall back to Marshal)
+	m7 := map[string]any{"complex": make(chan int)} // channels can't be converted to string
+	result = Rm("Value: {complex}", m7)
+	assert.Contains(t, result, "Value: ") // channels marshal to empty/null in JSON
+}
+
+func TestReplaceEdgeCases(t *testing.T) {
+	// Test regex special characters in keys
+	result := R("Value {key[0]} and {key+1}", "key[0]", "first", "key+1", "second")
+	assert.Equal(t, "Value first and second", result)
+
+	// Test with regex metacharacters
+	result = R("Pattern {.*} and {^start$}", ".*", "wildcard", "^start$", "anchor")
+	assert.Equal(t, "Pattern wildcard and anchor", result)
+
+	// Test parentheses in keys
+	result = R("Function {func()} called", "func()", "myFunction")
+	assert.Equal(t, "Function myFunction called", result)
+}
+
+func TestReplacemEdgeCases(t *testing.T) {
+	// Test regex special characters in keys
+	m := map[string]any{"key[0]": "first", "key+1": "second"}
+	result := Rm("Value {key[0]} and {key+1}", m)
+	assert.Equal(t, "Value first and second", result)
+
+	// Test with regex metacharacters
+	m2 := map[string]any{".*": "wildcard", "^start$": "anchor"}
+	result = Rm("Pattern {.*} and {^start$}", m2)
+	assert.Equal(t, "Pattern wildcard and anchor", result)
+
+	// Test parentheses in keys
+	m3 := map[string]any{"func()": "myFunction"}
+	result = Rm("Function {func()} called", m3)
+	assert.Equal(t, "Function myFunction called", result)
+
+	// Test backslashes in keys
+	m4 := map[string]any{"path\\file": "test.txt"}
+	result = Rm("File at {path\\file}", m4)
+	assert.Equal(t, "File at test.txt", result)
+}
+
+func TestReplaceAndRmCompatibility(t *testing.T) {
+	// Test that R and Rm produce the same results for equivalent inputs
+	format := "Hello {name}, you are {age} years old"
+
+	// Using R
+	resultR := R(format, "name", "John", "age", "30")
+
+	// Using Rm
+	m := map[string]any{"name": "John", "age": "30"}
+	resultRm := Rm(format, m)
+
+	assert.Equal(t, resultR, resultRm)
+
+	// Test with spacing
+	formatWithSpaces := "Hello { name }, you are {  age  } years old"
+	resultRSpaced := R(formatWithSpaces, "name", "John", "age", "30")
+	resultRmSpaced := Rm(formatWithSpaces, m)
+
+	assert.Equal(t, resultRSpaced, resultRmSpaced)
+	assert.Equal(t, "Hello John, you are 30 years old", resultRSpaced)
+}
