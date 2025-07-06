@@ -176,50 +176,37 @@ func mapMerge(mT map[string]interface{}, mS map[string]interface{}) map[string]i
 // R : Replacer with optional spaces around keys
 // R("File {file} had error {error}", "file", file, "error", err)
 func R(format string, args ...string) string {
-	result := format
-
-	// Process pairs of arguments (key, value)
-	for i := 0; i < len(args)-1; i += 2 {
-		key := args[i]
-		value := args[i+1]
-
-		// Create regex pattern that matches {key} with optional spaces
-		pattern := `\{\s*` + regexp.QuoteMeta(key) + `\s*\}`
-
-		// Replace all matches
-		regex := regexp.MustCompile(pattern)
-		result = regex.ReplaceAllString(result, value)
+	args2 := make([]string, len(args))
+	for i, v := range args {
+		if i%2 == 0 {
+			args2[i] = fmt.Sprintf("{%v}", v)
+		} else {
+			args2[i] = fmt.Sprint(v)
+		}
 	}
-
-	return result
+	r := strings.NewReplacer(args2...)
+	return r.Replace(format)
 }
 
-// Rm is like R, for replacing with a map. replaces  {var} with optional spaces
-func Rm(format string, m map[string]any) string {
+// Rm is like R, for replacing with a map. replaces  {var}
+func Rm(format string, m map[string]interface{}) string {
 	if len(m) == 0 {
 		return format
 	}
 
-	result := format
 	var err error
+	args, i := make([]string, len(m)*4), 0
 
 	for k, v := range m {
-		// Create regex pattern that matches {key} with optional spaces
-		pattern := `\{\s*` + regexp.QuoteMeta(k) + `\s*\}`
-
-		// Get the replacement value
-		var replacement string
-		replacement, err = cast.ToStringE(v)
+		args[i] = "{" + k + "}"
+		args[i+1], err = cast.ToStringE(v)
 		if err != nil {
-			replacement = Marshal(v)
+			args[i+1] = Marshal(v)
 		}
-
-		// Replace all matches
-		regex := regexp.MustCompile(pattern)
-		result = regex.ReplaceAllString(result, replacement)
+		i += 2
 	}
 
-	return result
+	return strings.NewReplacer(args...).Replace(format)
 }
 
 // Rme is like Rm, for replacing with a map. replaces ${var} and {var}

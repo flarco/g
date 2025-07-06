@@ -525,6 +525,8 @@ func TestReplace(t *testing.T) {
 	// No matches
 	result = R("No placeholders here", "name", "John", "age", "30")
 	assert.Equal(t, "No placeholders here", result)
+	result = R("${c}", "c", "1")
+	assert.Equal(t, "$1", result)
 
 	// Empty format string
 	result = R("", "name", "John")
