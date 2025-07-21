@@ -67,6 +67,26 @@ var ZLogFormatLevel = func(i interface{}) string {
 	return levelColor
 }
 var ZLogFormatMessage = func(i interface{}) string {
+	if ll, ok := i.(string); ok {
+		switch ll {
+		case zerolog.LevelTraceValue:
+			return "TRC"
+		case zerolog.LevelDebugValue:
+			return "DBG"
+		case zerolog.LevelInfoValue:
+			return "INF"
+		case zerolog.LevelWarnValue:
+			return "WRN"
+		case zerolog.LevelErrorValue:
+			return "ERR"
+		case zerolog.LevelFatalValue:
+			return "FTL"
+		case zerolog.LevelPanicValue:
+			return "PNC"
+		default:
+			return ll
+		}
+	}
 	return fmt.Sprintf("%s", i)
 }
 
