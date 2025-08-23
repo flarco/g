@@ -888,6 +888,10 @@ func DurationString(duration time.Duration) (d string) {
 	days := hours / 24
 	years := days / 365
 
+	if secs < 1 {
+		return F("%dms", duration.Milliseconds())
+	}
+
 	if secs < 60 {
 		return F("%ds", secs)
 	}
