@@ -357,8 +357,18 @@ func (p *Proc) Start(args ...string) (err error) {
 	}
 
 	g.Trace("Proc command -> %s", p.String())
+
+	tries := 0
+retry:
+	tries++
+
 	err = p.Cmd.Start()
 	if err != nil {
+		if strings.Contains(err.Error(), "text file busy") && tries < 10 {
+			g.Warn("could not start command %s (%s), retrying...", p.String(), err.Error())
+			time.Sleep(1 * time.Second)
+			goto retry
+		}
 		return g.Error(err, p.CmdErrorText())
 	}
 
