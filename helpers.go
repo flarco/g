@@ -121,7 +121,10 @@ func GetType(myvar interface{}) string {
 
 // F : fmt.Sprintf
 func F(format string, args ...interface{}) string {
-	return fmt.Sprintf(format, args...)
+	if len(args) > 0 {
+		return fmt.Sprintf(format, args...)
+	}
+	return format
 }
 
 // M : return map[string]interface from args
