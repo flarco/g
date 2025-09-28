@@ -70,6 +70,7 @@ type Proc struct {
 	stderrScanner, stdoutScanner *bufio.Scanner
 	StdinWriter                  io.Writer
 	Pid                          int
+	ExitCode                     *int
 	Nice                         int
 	Context                      *g.Context
 	Done                         chan struct{} // finished with scanner
@@ -400,7 +401,7 @@ func (p *Proc) ResetBuffers() {
 }
 
 func (p *Proc) Exited() bool {
-	return p.Cmd == nil || (p.Cmd.ProcessState != nil && p.Cmd.ProcessState.Exited())
+	return p.ExitCode != nil
 }
 
 func (p *Proc) scanAndWait() {
@@ -529,7 +530,9 @@ func (p *Proc) Wait() error {
 	}
 
 	if p.Cmd != nil && p.Cmd.ProcessState != nil {
-		if code := p.Cmd.ProcessState.ExitCode(); code != 0 {
+		code := p.Cmd.ProcessState.ExitCode()
+		p.ExitCode = g.Ptr(code)
+		if code != 0 {
 			return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
 		}
 	}
