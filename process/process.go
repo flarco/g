@@ -455,6 +455,12 @@ func (p *Proc) scanAndWait() {
 	}()
 
 	err := p.Cmd.Wait()
+
+	if p.Cmd != nil && p.Cmd.ProcessState != nil {
+		code := p.Cmd.ProcessState.ExitCode()
+		p.ExitCode = g.Ptr(code)
+	}
+
 	if err != nil {
 		p.Err = g.Error(err, p.CmdErrorText())
 	}
@@ -529,9 +535,7 @@ func (p *Proc) Wait() error {
 		return p.Err
 	}
 
-	if p.Cmd != nil && p.Cmd.ProcessState != nil {
-		code := p.Cmd.ProcessState.ExitCode()
-		p.ExitCode = g.Ptr(code)
+	if code := g.PtrVal(p.ExitCode); p.ExitCode != nil {
 		if code != 0 {
 			return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
 		}
