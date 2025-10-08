@@ -846,6 +846,72 @@ func TimeVal(v *time.Time) time.Time {
 	return time.Time{}
 }
 
+// VersionNumber converts a semantic version string
+// to a five digit number:
+// 1.4.1 => 10401
+// 1.4.3 => 10403
+// 1.4.10 => 10410
+// 1.4.13 => 10413
+// 1.5.0 => 10500
+// 1.10.1 => 11001
+// 1.10.10 => 11010
+// 2.15.10 => 21510
+func VersionNumber(versionStr string) (verNum int, err error) {
+	// Remove 'v' prefix if present
+	versionStr = strings.TrimPrefix(versionStr, "v")
+
+	// Split version into parts
+	parts := strings.Split(versionStr, ".")
+	if len(parts) < 2 || len(parts) > 3 {
+		return 0, Error("invalid version format: %s (expected format: major.minor[.patch])", versionStr)
+	}
+
+	// Parse major version
+	major, err := cast.ToIntE(parts[0])
+	if err != nil {
+		return 0, Error(err, "unable to parse major version: %s", parts[0])
+	}
+
+	// Parse minor version
+	minor, err := cast.ToIntE(parts[1])
+	if err != nil {
+		return 0, Error(err, "unable to parse minor version: %s", parts[1])
+	}
+
+	// Parse patch version (default to 0 if not present)
+	patch := 0
+	if len(parts) == 3 {
+		patch, err = cast.ToIntE(parts[2])
+		if err != nil {
+			return 0, Error(err, "unable to parse patch version: %s", parts[2])
+		}
+	}
+
+	// Ensure components are within valid range
+	if major < 0 || major > 9 {
+		return 0, Error("major version out of range (0-9): %d", major)
+	}
+	if minor < 0 || minor > 99 {
+		return 0, Error("minor version out of range (0-99): %d", minor)
+	}
+	if patch < 0 || patch > 99 {
+		return 0, Error("patch version out of range (0-99): %d", patch)
+	}
+
+	// Calculate version number with special handling for missing patch:
+	// - With patch (x.y.z): major * 10000 + minor * 100 + patch
+	//   Examples: 1.4.3 => 10403, 1.15.10 => 11510
+	// - Without patch (x.y): major * 10000 + minor * 1000
+	//   Examples: 3.7 => 37000, 4.2 => 42000
+	if len(parts) == 3 {
+		verNum = major*10000 + minor*100 + patch
+	} else {
+		verNum = major*10000 + minor*1000
+	}
+
+	return verNum, nil
+}
+
 // CompareVersions uses integers for each part to compare
 // when comparing strings, 'v0.0.40' > 'v0.0.5' = False
 // when it should be True.

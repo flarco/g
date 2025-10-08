@@ -112,6 +112,88 @@ func TestHash(t *testing.T) {
 	println(hash)
 }
 
+func TestVersionNumber(t *testing.T) {
+	// Test basic version numbers
+	verNum, err := VersionNumber("1.4.3")
+	assert.NoError(t, err)
+	assert.Equal(t, 10403, verNum)
+
+	verNum, err = VersionNumber("1.4.1")
+	assert.NoError(t, err)
+	assert.Equal(t, 10401, verNum)
+
+	verNum, err = VersionNumber("1.4.13")
+	assert.NoError(t, err)
+	assert.Equal(t, 10413, verNum)
+
+	verNum, err = VersionNumber("1.4.10")
+	assert.NoError(t, err)
+	assert.Equal(t, 10410, verNum)
+
+	verNum, err = VersionNumber("1.5.0")
+	assert.NoError(t, err)
+	assert.Equal(t, 10500, verNum)
+
+	verNum, err = VersionNumber("1.15.10")
+	assert.NoError(t, err)
+	assert.Equal(t, 11510, verNum)
+
+	// Test with 'v' prefix
+	verNum, err = VersionNumber("v2.3.5")
+	assert.NoError(t, err)
+	assert.Equal(t, 20305, verNum)
+
+	// Test without patch version
+	verNum, err = VersionNumber("3.7")
+	assert.NoError(t, err)
+	assert.Equal(t, 37000, verNum)
+
+	verNum, err = VersionNumber("v4.2")
+	assert.NoError(t, err)
+	assert.Equal(t, 42000, verNum)
+
+	// Test edge cases
+	verNum, err = VersionNumber("0.0.0")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, verNum)
+
+	// Test error cases - non-numeric values
+	_, err = VersionNumber("a.b.c")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to parse major version")
+
+	_, err = VersionNumber("1.b.3")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to parse minor version")
+
+	_, err = VersionNumber("1.2.c")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to parse patch version")
+
+	// Test error cases - out of range values
+	_, err = VersionNumber("10.0.0")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "major version out of range")
+
+	_, err = VersionNumber("1.100.0")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "minor version out of range")
+
+	_, err = VersionNumber("1.2.100")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "patch version out of range")
+
+	// Test negative values
+	_, err = VersionNumber("-1.0.0")
+	assert.Error(t, err)
+
+	_, err = VersionNumber("1.-1.0")
+	assert.Error(t, err)
+
+	_, err = VersionNumber("1.0.-1")
+	assert.Error(t, err)
+}
+
 func TestCompareVersion(t *testing.T) {
 	isNew, err := CompareVersions("v0.0.5", "v0.0.40")
 	assert.True(t, isNew)
@@ -320,6 +402,12 @@ func TestMarshalOrdered(t *testing.T) {
 			map[string]interface{}{"c": 3, "d": 4},
 		},
 	}
+
+	// _, err = jsonOther.Marshal(map[any]any{1: 1})
+	// assert.NoError(t, err)
+
+	_, err = JSONMarshal(map[any]any{1: 1})
+	assert.NoError(t, err)
 
 	arrStr1, err := MarshalOrdered(arrMap1)
 	assert.NoError(t, err)
