@@ -74,17 +74,17 @@ func (e *ErrType) Error() string {
 
 // FullError returns an error type with a detailed string
 func (e *ErrType) FullError() error {
-	return fmt.Errorf(e.Full())
+	return errors.New(e.Full())
 }
 
 // DebugError returns an error type with a detailed string
 func (e *ErrType) DebugError() error {
-	return fmt.Errorf(e.Debug())
+	return errors.New(e.Debug())
 }
 
 // OriginalError returns an error type with the original err string
 func (e *ErrType) OriginalError() error {
-	return fmt.Errorf(e.Err)
+	return errors.New(e.Err)
 }
 
 // CallerStackMD5 returns the stack md5
@@ -474,7 +474,7 @@ func (e *ErrorGroup) Err() error {
 		return nil
 	}
 	// return e
-	return fmt.Errorf(e.String())
+	return errors.New(e.String())
 }
 
 func (e *ErrorGroup) ErrSimple() error {
@@ -503,7 +503,7 @@ func (e *ErrorGroup) ErrSimple() error {
 		errStringsMap[errString] = struct{}{}
 	}
 
-	return fmt.Errorf(strings.Join(errStrings, " | "))
+	return errors.New(strings.Join(errStrings, " | "))
 }
 
 func (e *ErrorGroup) String() string {
