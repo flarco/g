@@ -553,5 +553,15 @@ func TimeColored() string {
 }
 
 func Colorize(color int, text string) string {
-	return fmt.Sprintf("\x1b[%dm%v\x1b[0m", color, text)
+	// Start and reset ANSI sequences
+	start := fmt.Sprintf("\x1b[%dm", color)
+	reset := "\x1b[0m"
+
+	// If the inner text contains resets, reapply the current (parent) color
+	// so nested Colorize calls return to the parent color instead of default.
+	if strings.Contains(text, reset) {
+		text = strings.ReplaceAll(text, reset, reset+start)
+	}
+
+	return start + fmt.Sprintf("%v", text) + reset
 }
