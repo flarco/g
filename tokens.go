@@ -504,34 +504,58 @@ func isNumeric(s string) bool {
 	return isNumeric
 }
 
+// isWhiteByte checks if a byte is a whitespace character (optimized for single bytes)
+func isWhiteByte(c byte) bool {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r'
+}
+
+// isOperandByte checks if a byte is an operand character (optimized for single bytes)
+func isOperandByte(c byte) bool {
+	switch c {
+	case '.', ',', '+', '-', '*', '/', '=', '<', '>', '!', '~', ';':
+		return true
+	default:
+		return false
+	}
+}
+
 type TokenizeOptions struct{}
 
 // TokenizeWithMapIDs map of char index to line-column ID
 func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 	// wordChars := CharsToMap("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_")
 
-	var token, char, pChar, nChar string
+	var tokenBuilder strings.Builder
+	var char, pChar, nChar byte
 	var inTickQ, inSingleQ, inDoubleQ, escaping bool
 	var inCommentLine, inCommentMulti, newLine bool
 	var i, parenthesisLevel, startLineNumber, startColNumber, lineNumber, colNumber int
 
-	body = TokenBody{}
+	// Pre-allocate token slice capacity (estimate ~1 token per 4 characters)
+	estimatedTokens := len(text) / 4
+	if estimatedTokens < 10 {
+		estimatedTokens = 10
+	}
+	body = TokenBody{
+		Tokens: make(Tokens, 0, estimatedTokens),
+	}
 
-	inQuote := func() bool { return inSingleQ || inDoubleQ || inTickQ }
-	inComment := func() bool { return inCommentLine || inCommentMulti }
+	// Pre-allocate builder capacity
+	tokenBuilder.Grow(32)
+
 	firstKeyword := ""
 
 	reset := func() {
-		token = ""
+		tokenBuilder.Reset()
 		startLineNumber = lineNumber
 		startColNumber = colNumber - 1
 	}
 	addTokenAndReset := func() {
-		if token == "" {
+		if tokenBuilder.Len() == 0 {
 			return
 		}
 		t := Token{
-			Text:             token,
+			Text:             tokenBuilder.String(),
 			ParenthesisLevel: parenthesisLevel,
 			Position:         Position{startLineNumber, startColNumber},
 		}
@@ -547,33 +571,39 @@ func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 			}
 		}
 	}
-	append := func() {
-		token = token + char
+	appendByte := func() {
+		tokenBuilder.WriteByte(char)
 	}
 	appendAndAdd := func() {
-		append()
+		appendByte()
 		addTokenAndReset()
 	}
 	addResetAndAppend := func() {
 		addTokenAndReset()
-		append()
+		appendByte()
 	}
 
 	for i = range text {
-		char = string(text[i])
+		char = text[i]
 		// previous
 		if i > 0 {
-			pChar = string(text[i-1])
+			pChar = text[i-1]
+		} else {
+			pChar = 0
 		}
 
 		// next
-		nChar = ""
+		nChar = 0
 		if i+1 < len(text) {
-			nChar = string(text[i+1])
+			nChar = text[i+1]
 		}
 
+		// Cache these checks per iteration
+		isInQuote := inSingleQ || inDoubleQ || inTickQ
+		isInComment := inCommentLine || inCommentMulti
+
 		// line & column numbers
-		if char == "\n" {
+		if char == '\n' {
 			newLine = true
 			lineNumber++
 			colNumber = 0
@@ -585,7 +615,7 @@ func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 
 		// comments
 		{
-			if !inQuote() && !inComment() && char == "-" && nChar == "-" {
+			if !isInQuote && !isInComment && char == '-' && nChar == '-' {
 				addResetAndAppend()
 				inCommentLine = true
 				continue
@@ -593,17 +623,17 @@ func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 				appendAndAdd()
 				inCommentLine = false
 				continue
-			} else if !inQuote() && !inComment() && char == "/" && nChar == "*" {
+			} else if !isInQuote && !isInComment && char == '/' && nChar == '*' {
 				addTokenAndReset()
 				inCommentMulti = true
-				append()
+				appendByte()
 				continue
-			} else if inCommentMulti && pChar == "*" && char == "/" {
+			} else if inCommentMulti && pChar == '*' && char == '/' {
 				appendAndAdd()
 				inCommentMulti = false
 				continue
-			} else if inComment() {
-				append()
+			} else if isInComment {
+				appendByte()
 				continue // no need to process comment text
 			}
 		}
@@ -611,13 +641,13 @@ func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 		// parenthesis
 		{
 			switch {
-			case !inQuote() && char == "(":
+			case !isInQuote && char == '(':
 				addTokenAndReset()
 				parenthesisLevel++
 				appendAndAdd()
 				startColNumber++
 				continue
-			case !inQuote() && char == ")":
+			case !isInQuote && char == ')':
 				addTokenAndReset()
 				appendAndAdd()
 				startColNumber++
@@ -628,43 +658,46 @@ func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 
 		// string & identifier quotes
 		{
-			if !inQuote() && char == "'" {
+			if !isInQuote && char == '\'' {
 				inSingleQ = true
-				if isWhite(token) || isOperand(token) {
+				tokenStr := tokenBuilder.String()
+				if isWhite(tokenStr) || isOperand(tokenStr) {
 					addResetAndAppend()
 					continue
 				}
-			} else if inSingleQ && char == "'" && !escaping {
+			} else if inSingleQ && char == '\'' && !escaping {
 				appendAndAdd()
 				inSingleQ = false
 				continue
-			} else if inSingleQ && char == `\` && !escaping {
+			} else if inSingleQ && char == '\\' && !escaping {
 				escaping = true
 			} else if inSingleQ && escaping {
 				escaping = false
 			}
 
-			if !inQuote() && char == `"` {
+			if !isInQuote && char == '"' {
 				inDoubleQ = true
-				if isWhite(token) || isOperand(token) {
+				tokenStr := tokenBuilder.String()
+				if isWhite(tokenStr) || isOperand(tokenStr) {
 					addResetAndAppend()
 					continue
 				}
-			} else if inDoubleQ && char == `"` {
+			} else if inDoubleQ && char == '"' {
 				inDoubleQ = false
 				appendAndAdd()
 				continue
 			}
 
-			if !inQuote() && char == "`" {
+			if !isInQuote && char == '`' {
 				inTickQ = true
-				if isWhite(token) || isOperand(token) {
+				tokenStr := tokenBuilder.String()
+				if isWhite(tokenStr) || isOperand(tokenStr) {
 					addResetAndAppend()
 					continue
 				}
-			} else if inTickQ && char == "`" {
+			} else if inTickQ && char == '`' {
 				inTickQ = false
-				if nChar != "." {
+				if nChar != '.' {
 					appendAndAdd()
 					continue
 				}
@@ -672,18 +705,18 @@ func Tokenize(text string, options *TokenizeOptions) (body TokenBody) {
 
 		}
 
-		if inQuote() {
-			append()
-		} else if isWhite(char) != isWhite(pChar) {
+		if isInQuote {
+			appendByte()
+		} else if isWhiteByte(char) != isWhiteByte(pChar) {
 			addResetAndAppend()
-		} else if isOperand(char) != isOperand(pChar) {
+		} else if isOperandByte(char) != isOperandByte(pChar) {
 			addResetAndAppend()
 		} else {
-			append()
+			appendByte()
 		}
 	}
 
-	if len(token) > 0 {
+	if tokenBuilder.Len() > 0 {
 		addTokenAndReset()
 	}
 
