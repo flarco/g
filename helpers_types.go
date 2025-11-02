@@ -117,7 +117,12 @@ func (c *Context) getLogKeysMap() (logKeysMap map[string]any) {
 
 // WithNext provides KVs for only the next log event
 func (c *Context) WithNext(KVs ...any) *Context {
-	c.with = M(KVs...)
+	if c.with == nil {
+		c.with = M()
+	}
+	for k, v := range M(KVs...) {
+		c.with[k] = v // overwrite
+	}
 	return c
 }
 

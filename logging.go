@@ -464,6 +464,7 @@ func LogC(text string, col string, w io.Writer) {
 func PrintFatal(E error, args ...interface{}) {
 	makeErrStrings := func(payload string) string {
 		cancelledCount := 0
+		payload = strings.ReplaceAll(payload, "---\n\n---", "---\n---")
 		errParts := strings.Split(payload, "\n\n")
 		errStrings := []string{}
 		errHash := map[string]struct{}{}
