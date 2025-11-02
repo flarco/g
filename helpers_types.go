@@ -84,8 +84,13 @@ func (c *Context) SetLogValues(KVs ...any) {
 	c.Map.Set(logKeyID, logKeysMap)
 }
 
+var maxWithMap sync.Mutex
+
 // GetLogValues gets Log values as a map
 func (c *Context) GetLogValues() map[string]any {
+	maxWithMap.Lock()
+	defer maxWithMap.Unlock()
+
 	m := M()
 
 	for k, v := range GlobalLogValues.Items() {
@@ -117,6 +122,9 @@ func (c *Context) getLogKeysMap() (logKeysMap map[string]any) {
 
 // WithNext provides KVs for only the next log event
 func (c *Context) WithNext(KVs ...any) *Context {
+	maxWithMap.Lock()
+	defer maxWithMap.Unlock()
+
 	if c.with == nil {
 		c.with = M()
 	}
