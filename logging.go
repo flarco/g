@@ -173,6 +173,16 @@ func (ll *LogLine) Line() string {
 		)
 	}
 
+	// cast float to int if possible since json unmarshals ints as float64
+	for i, arg := range ll.Args {
+		if _, ok := arg.(float64); ok {
+			hasDot := strings.Contains(cast.ToString(arg), ".")
+			if intVal, err := cast.ToInt64E(arg); err == nil && !hasDot {
+				ll.Args[i] = intVal
+			}
+		}
+	}
+
 	return F(timeText+levelPrefix+ll.Text, ll.Args...)
 }
 
