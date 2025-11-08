@@ -101,12 +101,109 @@ func (j Map) Value() (driver.Value, error) {
 	return JSONValuer(j, "{}")
 }
 
-// ToMapString returns the value as a Map of strings
-func ToMapString(j map[string]interface{}) map[string]string {
-	m := map[string]string{}
-	for k, v := range j {
-		m[k] = cast.ToString(v)
+func CastToString(val any) (valString string) {
+
+	switch v := val.(type) {
+	case string:
+		valString = v
+	case []uint8:
+		valString = string(v)
+	case *string:
+		valString = *v
+	case map[string]string, map[string]any, map[any]any, []any, []string:
+		valString = Marshal(v)
+	default:
+		valString = cast.ToString(v)
 	}
+
+	return valString
+}
+
+func CastToMapString(val any) map[string]string {
+	m, _ := CastToMapStringE(val)
+	return m
+}
+
+func CastToMapStringE(val any) (map[string]string, error) {
+	m := map[string]string{}
+
+	if val == nil {
+		return m, nil
+	}
+
+	v := reflect.ValueOf(val)
+
+	// Handle pointer types
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return m, nil
+		}
+		v = v.Elem()
+	}
+
+	// Only proceed if it's a map
+	if v.Kind() != reflect.Map {
+		return m, Error("value is not a map type, got %T", val)
+	}
+
+	// Iterate over map keys
+	iter := v.MapRange()
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+
+		// Convert key to string
+		keyStr := CastToString(key.Interface())
+
+		// Convert value to string
+		valueStr := CastToString(value.Interface())
+
+		m[keyStr] = valueStr
+	}
+
+	return m, nil
+}
+
+func CastToMapAnyE(val any) (map[string]any, error) {
+	m := map[string]any{}
+
+	if val == nil {
+		return m, nil
+	}
+
+	v := reflect.ValueOf(val)
+
+	// Handle pointer types
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return m, nil
+		}
+		v = v.Elem()
+	}
+
+	// Only proceed if it's a map
+	if v.Kind() != reflect.Map {
+		return m, Error("value is not a map type, got %T", val)
+	}
+
+	// Iterate over map keys
+	iter := v.MapRange()
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+
+		// Convert key to string
+		keyStr := CastToString(key.Interface())
+
+		// Get the actual value
+		m[keyStr] = value.Interface()
+	}
+
+	return m, nil
+}
+
+func CastToMapAny(val any) map[string]any {
+	m, _ := CastToMapAnyE(val)
 	return m
 }
 
