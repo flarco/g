@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/flarco/g"
@@ -95,6 +96,38 @@ func ClientDo(method, URL string, body io.Reader, headers map[string]string, tim
 
 	resp, err = client.Do(req)
 	if err != nil {
+		if resp == nil {
+			switch {
+			case strings.Contains(err.Error(), "server misbehaving"):
+				errorMsg := g.ErrMsg(err)
+				// create fake http response with 502 error code
+				resp = &http.Response{
+					Status:        "DNS Server Misbehaving",
+					StatusCode:    502,
+					Body:          io.NopCloser(strings.NewReader(errorMsg)),
+					Header:        http.Header{"Content-Type": []string{"text/plain"}},
+					Proto:         "HTTP/1.1",
+					ProtoMajor:    1,
+					ProtoMinor:    1,
+					ContentLength: int64(len(errorMsg)),
+					Request:       req,
+				}
+			case strings.Contains(err.Error(), "Client.Timeout"):
+				errorMsg := g.ErrMsg(err)
+				// create fake http response with 502 error code
+				resp = &http.Response{
+					Status:        "Request Timed-out",
+					StatusCode:    504,
+					Body:          io.NopCloser(strings.NewReader(errorMsg)),
+					Header:        http.Header{"Content-Type": []string{"text/plain"}},
+					Proto:         "HTTP/1.1",
+					ProtoMajor:    1,
+					ProtoMinor:    1,
+					ContentLength: int64(len(errorMsg)),
+					Request:       req,
+				}
+			}
+		}
 		err = g.Error(err, "could not perform request")
 		return
 	}
