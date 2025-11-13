@@ -190,10 +190,18 @@ type LogLines []LogLine
 
 func (lls LogLines) Lines() (lines []string) {
 	lines = make([]string, len(lls))
-	for _, ll := range lls {
-		lines = append(lines, ll.Line())
+	for i, ll := range lls {
+		lines[i] = ll.Line()
 	}
 	return lines
+}
+
+func (lls LogLines) Text() string {
+	lines := lls.Lines()
+	if len(lines) == 0 {
+		return ""
+	}
+	return strings.Join(lines, "\n") + "\n"
 }
 
 // NewLogHook return a new log hook
