@@ -69,6 +69,7 @@ type Proc struct {
 	StderrReader, StdoutReader   io.ReadCloser
 	stderrScanner, stdoutScanner *bufio.Scanner
 	StdinWriter                  io.Writer
+	MaxBufferSize                int
 	Pid                          int
 	ExitCode                     *int
 	Nice                         int
@@ -342,11 +343,21 @@ func (p *Proc) Start(args ...string) (err error) {
 		return g.Error(err)
 	}
 
+	if p.MaxBufferSize == 0 {
+		// Increase max token size to handle very long lines (e.g., error messages, CSV rows with large VARCHAR fields)
+		// Default is 64KB, increase to 10MB to accommodate large output lines
+		p.MaxBufferSize = 10 * 1024 * 1024 // 10MB
+	}
+
 	p.stderrScanner = bufio.NewScanner(p.StderrReader)
 	p.stderrScanner.Split(bufio.ScanLines)
+	stderrBuf := make([]byte, 0, 64*1024) // start with 64KB
+	p.stderrScanner.Buffer(stderrBuf, p.MaxBufferSize)
 
 	p.stdoutScanner = bufio.NewScanner(p.StdoutReader)
 	p.stdoutScanner.Split(bufio.ScanLines)
+	stdoutBuf := make([]byte, 0, 64*1024) // start with 64KB
+	p.stdoutScanner.Buffer(stdoutBuf, p.MaxBufferSize)
 
 	if p.StdinOverride != nil {
 		p.Cmd.Stdin = p.StdinOverride
