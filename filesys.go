@@ -56,16 +56,7 @@ func ListDirRecursive(dirPath string) (files []FileItem, err error) {
 			return nil
 		}
 
-		subPath = filepath.Clean(subPath)
-		file := FileItem{
-			Name:       info.Name(),
-			RelPath:    strings.TrimPrefix(subPath, dirPath),
-			FullPath:   subPath,
-			ParentPath: filepath.Dir(subPath),
-			IsDir:      info.IsDir(),
-			ModTs:      info.ModTime().Unix(),
-			Size:       info.Size(),
-		}
+		file := InfoToFileItem(dirPath, subPath, info)
 
 		file.RelPath = strings.TrimPrefix(file.RelPath, "./")
 		file.RelPath = strings.TrimPrefix(file.RelPath, "/")
@@ -78,4 +69,17 @@ func ListDirRecursive(dirPath string) (files []FileItem, err error) {
 		err = Error(err, "Error listing "+dirPath)
 	}
 	return
+}
+
+func InfoToFileItem(dirPath, filePath string, info os.FileInfo) FileItem {
+	filePath = filepath.Clean(filePath)
+	return FileItem{
+		Name:       info.Name(),
+		RelPath:    strings.TrimPrefix(filePath, dirPath),
+		FullPath:   filePath,
+		ParentPath: filepath.Dir(filePath),
+		IsDir:      info.IsDir(),
+		ModTs:      info.ModTime().Unix(),
+		Size:       info.Size(),
+	}
 }
