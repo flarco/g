@@ -253,6 +253,11 @@ func SetZeroLogHook(h zerolog.Hook) {
 
 // SetLogHook sets a log hook
 func SetLogHook(lh *LogHook) {
+	LogHooks = []*LogHook{lh}
+}
+
+// AddLogHook adds a log hook
+func AddLogHook(lh *LogHook) {
 	LogHooks = append(LogHooks, lh)
 }
 
