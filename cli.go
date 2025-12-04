@@ -80,7 +80,7 @@ func (c *CliSC) Make() *CliSC {
 
 	for i, f := range c.PosFlags {
 		val := ""
-		c.Sc.AddPositionalValue(&val, f.Name, i+1, true, f.Description)
+		c.Sc.AddPositionalValue(&val, f.Name, i+1, f.Required, f.Description)
 		c.Vals[f.Name] = &val
 	}
 
