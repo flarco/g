@@ -577,6 +577,10 @@ func TimeColored() string {
 }
 
 func Colorize(color int, text string) string {
+	if DisableColor {
+		return text
+	}
+
 	// Start and reset ANSI sequences
 	start := fmt.Sprintf("\x1b[%dm", color)
 	reset := "\x1b[0m"
