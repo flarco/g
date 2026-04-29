@@ -3,6 +3,7 @@ package net
 import (
 	"os"
 	"strings"
+	"time"
 
 	"github.com/flarco/g"
 	"gopkg.in/gomail.v2"
@@ -105,7 +106,16 @@ func (s *SMTP) SendQueue() (err error) {
 	d := gomail.NewDialer(s.Host, s.Port, s.User, s.Password)
 	// d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 	d.SSL = s.SSL
-	err = d.DialAndSend(s.EmailQueue...)
+
+	// Bound the entire SMTP exchange so a hung relay cannot block the caller forever.
+	// gomail's TCP dial has its own 10s timeout, but STARTTLS / DATA can still stall.
+	done := make(chan error, 1)
+	go func() { done <- d.DialAndSend(s.EmailQueue...) }()
+	select {
+	case err = <-done:
+	case <-time.After(30 * time.Second):
+		err = g.Error("smtp send timed out after 30s")
+	}
 	if err != nil {
 		err = g.Error(err, "could not send email")
 		return
