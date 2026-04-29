@@ -505,6 +505,9 @@ func KVArrToMap(props ...string) map[string]string {
 func MapToKVArr(properties map[string]string) []string {
 	props := []string{}
 	for k, v := range properties {
+		if k == "" {
+			continue // skip empty keys (causes CreateProcess errors on Windows)
+		}
 		props = append(props, F("%s=%s", k, v))
 	}
 	return props
