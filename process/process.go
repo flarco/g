@@ -75,6 +75,7 @@ type Proc struct {
 	Nice                         int
 	Context                      *g.Context
 	Done                         chan struct{} // finished with scanner
+	ScanErr                      error
 	scanner                      *ScanConfig
 	printMux                     sync.Mutex
 	tempScriptFile               string // path to temp script file for cleanup
@@ -460,6 +461,13 @@ func (p *Proc) scanAndWait() {
 				}
 				fmt.Fprintf(os.Stdout, "%s", line+"\n")
 			}
+			p.printMux.Unlock()
+		}
+		// record a scanner error (e.g. bufio.ErrTooLong) so consumers can detect
+		// the wedge instead of blocking forever waiting on end-of-output.
+		if scanErr := p.stdoutScanner.Err(); scanErr != nil {
+			p.printMux.Lock()
+			p.ScanErr = g.Error(scanErr, "stdout scanner stopped")
 			p.printMux.Unlock()
 		}
 		scannerExitChan <- true
