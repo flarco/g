@@ -61,9 +61,9 @@ func (s *SizedWaitGroup) Add() {
 //
 // See sync.WaitGroup documentation for more information.
 func (s *SizedWaitGroup) AddWithContext(ctx context.Context) error {
-	if s.queueSize >= int32(s.Size) {
+	if atomic.LoadInt32(&s.queueSize) >= int32(s.Size) {
 		if os.Getenv("DEBUG") == "TRACE" {
-			log.Printf("SizedWaitGroup: %d >= %d", s.queueSize, s.Size)
+			log.Printf("SizedWaitGroup: %d >= %d", atomic.LoadInt32(&s.queueSize), s.Size)
 		}
 	}
 
@@ -88,9 +88,9 @@ func (s *SizedWaitGroup) AddWithContext(ctx context.Context) error {
 // Done decrements the SizedWaitGroup counter.
 // See sync.WaitGroup documentation for more information.
 func (s *SizedWaitGroup) Done() {
-	if s.queueSize <= 0 {
+	if atomic.LoadInt32(&s.queueSize) <= 0 {
 		if os.Getenv("DEBUG") == "TRACE" {
-			log.Printf("SizedWaitGroup: queueSize is %d! Calling Done() freezes...\n", s.queueSize)
+			log.Printf("SizedWaitGroup: queueSize is %d! Calling Done() freezes...\n", atomic.LoadInt32(&s.queueSize))
 		}
 	}
 	<-s.current
@@ -107,5 +107,5 @@ func (s *SizedWaitGroup) Wait() {
 // GetQueueSize returns the number of items
 // currently in the waitgroup
 func (s *SizedWaitGroup) GetQueueSize() int32 {
-	return s.queueSize
+	return atomic.LoadInt32(&s.queueSize)
 }
