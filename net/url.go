@@ -9,8 +9,9 @@ import (
 
 // URL is a url instance
 type URL struct {
-	U       *url.URL
-	OrigURL string
+	U          *url.URL
+	OrigURL    string
+	extraHosts string // stripped seed-list hosts (MongoDB), re-inserted by String()
 }
 
 // NewURL creates a new URL instance
@@ -19,11 +20,47 @@ func NewURL(urlStr string) (*URL, error) {
 		urlStr = strings.ReplaceAll(urlStr, `\`, `/`) // windows path fix
 	}
 
-	u, err := url.Parse(urlStr)
+	// reduce MongoDB-style multi-host authorities to their first host so
+	// url.Parse accepts them (rejected under Go 1.26+); OrigURL keeps the full URL
+	parseStr, extraHosts := reduceMultiHostAuthority(urlStr)
+
+	u, err := url.Parse(parseStr)
 	if err != nil {
 		return &URL{OrigURL: urlStr}, err
 	}
-	return &URL{U: u, OrigURL: urlStr}, nil
+	return &URL{U: u, OrigURL: urlStr, extraHosts: extraHosts}, nil
+}
+
+// reduceMultiHostAuthority collapses a comma-separated multi-host authority
+// (MongoDB seed lists) to its first host, returning the reduced URL and the
+// stripped extra hosts (comma-prefixed). Non-multi-host URLs pass through.
+func reduceMultiHostAuthority(urlStr string) (reduced, extraHosts string) {
+	sep := "://"
+	i := strings.Index(urlStr, sep)
+	if i < 0 {
+		return urlStr, ""
+	}
+	rest := urlStr[i+len(sep):]
+
+	end := len(rest)
+	if j := strings.IndexAny(rest, "/?#"); j >= 0 {
+		end = j
+	}
+	authority := rest[:end]
+
+	userinfo := ""
+	hosts := authority
+	if at := strings.LastIndex(authority, "@"); at >= 0 {
+		userinfo = authority[:at+1]
+		hosts = authority[at+1:]
+	}
+
+	comma := strings.Index(hosts, ",")
+	if comma < 0 {
+		return urlStr, ""
+	}
+
+	return urlStr[:i+len(sep)] + userinfo + hosts[:comma] + rest[end:], hosts[comma:]
 }
 
 // URL returns the url object
@@ -118,5 +155,12 @@ func (u *URL) String() string {
 	if u.U == nil {
 		return u.OrigURL
 	}
-	return u.U.String()
+	s := u.U.String()
+	if u.extraHosts != "" && u.U.Host != "" {
+		if idx := strings.Index(s, u.U.Host); idx >= 0 {
+			insertAt := idx + len(u.U.Host)
+			s = s[:insertAt] + u.extraHosts + s[insertAt:]
+		}
+	}
+	return s
 }
