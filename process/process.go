@@ -412,8 +412,35 @@ func (p *Proc) ResetBuffers() {
 	p.Combined.Reset()
 }
 
+// ExitCode, ScanErr and Err are written by scanAndWait's goroutines while
+// callers poll them, so they are accessed under printMux. The fields stay
+// exported for compatibility; prefer these accessors from other goroutines.
+
 func (p *Proc) Exited() bool {
+	p.printMux.Lock()
+	defer p.printMux.Unlock()
 	return p.ExitCode != nil
+}
+
+// GetExitCode returns the process exit code, or nil if still running.
+func (p *Proc) GetExitCode() *int {
+	p.printMux.Lock()
+	defer p.printMux.Unlock()
+	return p.ExitCode
+}
+
+// GetScanErr returns the stdout scanner error, if the scanner stopped early.
+func (p *Proc) GetScanErr() error {
+	p.printMux.Lock()
+	defer p.printMux.Unlock()
+	return p.ScanErr
+}
+
+// GetErr returns the process error recorded by Wait.
+func (p *Proc) GetErr() error {
+	p.printMux.Lock()
+	defer p.printMux.Unlock()
+	return p.Err
 }
 
 func (p *Proc) scanAndWait() {
@@ -477,11 +504,16 @@ func (p *Proc) scanAndWait() {
 
 	if p.Cmd != nil && p.Cmd.ProcessState != nil {
 		code := p.Cmd.ProcessState.ExitCode()
+		p.printMux.Lock()
 		p.ExitCode = g.Ptr(code)
+		p.printMux.Unlock()
 	}
 
 	if err != nil {
-		p.Err = g.Error(err, p.CmdErrorText())
+		errText := p.CmdErrorText()
+		p.printMux.Lock()
+		p.Err = g.Error(err, errText)
+		p.printMux.Unlock()
 	}
 
 	// wait for scanners to exit
@@ -550,12 +582,12 @@ func (p *Proc) Wait() error {
 		}
 	}()
 
-	if p.Err != nil {
-		return p.Err
+	if err := p.GetErr(); err != nil {
+		return err
 	}
 
-	if code := g.PtrVal(p.ExitCode); p.ExitCode != nil {
-		if code != 0 {
+	if exitCode := p.GetExitCode(); exitCode != nil {
+		if code := g.PtrVal(exitCode); code != 0 {
 			return g.Error("exit code = %d.\n%s", code, p.CmdErrorText())
 		}
 	}
