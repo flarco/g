@@ -432,16 +432,30 @@ func Err(text string, args ...interface{}) {
 }
 
 func doHooks(level zerolog.Level, text string, args []interface{}) {
+	hookArgs := stripLogMapArgs(args)
 	for _, hook := range LogHooks {
 		if level >= hook.Level && hook.Func != nil {
 			hook.Func(&LogLine{
 				Time:  time.Now(),
 				Level: int8(level),
 				Text:  text,
-				Args:  args,
+				Args:  hookArgs,
 			})
 		}
 	}
+}
+
+// stripLogMapArgs drops map[string]interface{} args so LogLine.Line does not
+// emit `%!(EXTRA map[...])`. The zerolog path already strips these.
+func stripLogMapArgs(args []interface{}) []interface{} {
+	newArgs := make([]interface{}, 0, len(args))
+	for _, val := range args {
+		if _, ok := val.(map[string]interface{}); ok {
+			continue
+		}
+		newArgs = append(newArgs, val)
+	}
+	return newArgs
 }
 
 func doLog(localLog *zerolog.Event, text string, args []interface{}) {
