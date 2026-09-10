@@ -144,11 +144,12 @@ func SetLogLevel(level Level) {
 }
 
 type LogLine struct {
-	Time  time.Time `json:"time,omitempty"`
-	Level int8      `json:"level,omitempty"`
-	Group string    `json:"group,omitempty"`
-	Text  string    `json:"text,omitempty"`
-	Args  []any     `json:"args,omitempty"`
+	Time   time.Time      `json:"time,omitempty"`
+	Level  int8           `json:"level,omitempty"`
+	Group  string         `json:"group,omitempty"`
+	Text   string         `json:"text,omitempty"`
+	Args   []any          `json:"args,omitempty"`
+	Values map[string]any `json:"values,omitempty"`
 }
 
 func (ll *LogLine) Line() string {
@@ -432,30 +433,39 @@ func Err(text string, args ...interface{}) {
 }
 
 func doHooks(level zerolog.Level, text string, args []interface{}) {
-	hookArgs := stripLogMapArgs(args)
+	values, hookArgs := extractHookValues(args)
 	for _, hook := range LogHooks {
 		if level >= hook.Level && hook.Func != nil {
 			hook.Func(&LogLine{
-				Time:  time.Now(),
-				Level: int8(level),
-				Text:  text,
-				Args:  hookArgs,
+				Time:   time.Now(),
+				Level:  int8(level),
+				Text:   text,
+				Args:   hookArgs,
+				Values: values,
 			})
 		}
 	}
 }
 
-// stripLogMapArgs drops map[string]interface{} args so LogLine.Line does not
-// emit `%!(EXTRA map[...])`. The zerolog path already strips these.
-func stripLogMapArgs(args []interface{}) []interface{} {
+// extractHookValues copies map[string]interface{} args into Values and
+// strips them from Args so LogLine.Line does not emit `%!(EXTRA map[...])`.
+func extractHookValues(args []interface{}) (map[string]any, []interface{}) {
+	var values map[string]any
 	newArgs := make([]interface{}, 0, len(args))
 	for _, val := range args {
-		if _, ok := val.(map[string]interface{}); ok {
+		m, ok := val.(map[string]interface{})
+		if !ok {
+			newArgs = append(newArgs, val)
 			continue
 		}
-		newArgs = append(newArgs, val)
+		if values == nil {
+			values = map[string]any{}
+		}
+		for k, v := range m {
+			values[k] = v
+		}
 	}
-	return newArgs
+	return values, newArgs
 }
 
 func doLog(localLog *zerolog.Event, text string, args []interface{}) {
