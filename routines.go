@@ -72,7 +72,7 @@ func GetMachineProcStats() ProcStats {
 		if netCounter.Name == "lo" {
 			continue
 		}
-		txBytes = rcBytes + netCounter.BytesSent
+		txBytes = txBytes + netCounter.BytesSent
 		rcBytes = rcBytes + netCounter.BytesRecv
 	}
 	stats.TxBytes = txBytes
