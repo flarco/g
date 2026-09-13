@@ -42,6 +42,55 @@ func DownloadFile(url string, filepath string) (err error) {
 	return nil
 }
 
+// DownloadFileProgress downloads a file and reports byte progress.
+// onProgress may be nil. total is Content-Length, or -1 when unknown.
+func DownloadFileProgress(url, filepath string, onProgress func(written, total int64)) (err error) {
+	out, err := os.Create(filepath)
+	if err != nil {
+		return g.Error(err, "Unable to Create file "+filepath)
+	}
+	defer out.Close()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return g.Error(err, "Unable to Reach URL: "+url)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return g.Error("Bad Status '%s' from URL %s", resp.Status, url)
+	}
+
+	total := resp.ContentLength
+	reader := io.Reader(resp.Body)
+	if onProgress != nil {
+		reader = &progressReader{r: resp.Body, total: total, fn: onProgress}
+	}
+
+	bw, err := io.Copy(out, reader)
+	if err != nil || bw == 0 {
+		return g.Error(err, "Unable to write to file "+filepath)
+	}
+
+	return nil
+}
+
+type progressReader struct {
+	r       io.Reader
+	written int64
+	total   int64
+	fn      func(written, total int64)
+}
+
+func (p *progressReader) Read(b []byte) (int, error) {
+	n, err := p.r.Read(b)
+	if n > 0 {
+		p.written += int64(n)
+		p.fn(p.written, p.total)
+	}
+	return n, err
+}
+
 // ClientDoStream Http client method execution returning a reader
 func ClientDoStream(method, URL string, body io.Reader, headers map[string]string) (resp *http.Response, reader io.Reader, err error) {
 	g.Trace("%s -> %s", method, URL)
