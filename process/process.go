@@ -73,6 +73,7 @@ type Proc struct {
 	Pid                          int
 	ExitCode                     *int
 	Nice                         int
+	SysProcAttr                  *syscall.SysProcAttr // OS-specific attributes, applied on Start
 	Context                      *g.Context
 	Done                         chan struct{} // finished with scanner
 	ScanErr                      error
@@ -327,6 +328,7 @@ func (p *Proc) Start(args ...string) (err error) {
 
 	p.Cmd = exec.Command(p.Bin, p.Args...)
 	p.Cmd.Dir = p.WorkDir
+	p.Cmd.SysProcAttr = p.SysProcAttr
 	if p.Env != nil {
 		p.Cmd.Env = g.MapToKVArr(p.Env)
 	}
