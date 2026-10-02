@@ -33,6 +33,7 @@ type CliSC struct {
 	CrudPK                []string
 	InclAccID             bool
 	ExecuteWithoutFlags   bool
+	Hidden                bool // not shown in the help
 	parentSc              *CliSC
 }
 
@@ -56,6 +57,7 @@ func (c *CliSC) Add() *CliSC {
 func (c *CliSC) Make() *CliSC {
 	c.Sc = flaggy.NewSubcommand(c.Name)
 	c.Sc.Description = c.Description
+	c.Sc.Hidden = c.Hidden
 	c.Sc.AdditionalHelpPrepend = c.AdditionalHelpPrepend
 	c.Sc.AdditionalHelpAppend = c.AdditionalHelpAppend
 	AllScs = append(AllScs, c)
