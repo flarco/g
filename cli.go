@@ -250,12 +250,10 @@ func CliProcess() (bool, error) {
 				}
 			}
 
-			if !cObj.ExecuteWithoutFlags {
-				if requiredFlag > 0 && allBlanks(cObj.Vals) {
-					return false, nil
-				} else if len(cObj.Flags) > 0 && allBlanks(cObj.Vals) {
-					return false, nil
-				}
+			// allBlanks also replaces the flag pointers with their values
+			blank := allBlanks(cObj.Vals)
+			if !cObj.ExecuteWithoutFlags && (requiredFlag > 0 || len(cObj.Flags) > 0) && blank {
+				return false, nil
 			}
 
 			// delete blanks, prepare values
