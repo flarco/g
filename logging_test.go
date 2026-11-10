@@ -79,3 +79,24 @@ func TestContextInfoHookNoExtraMap(t *testing.T) {
 	require.NotNil(t, got)
 	assert.NotContains(t, got.Line(), "%!(EXTRA")
 }
+
+func TestLogErrorHookNoExtraArgs(t *testing.T) {
+	prev := LogHooks
+	t.Cleanup(func() { LogHooks = prev })
+
+	var got *LogLine
+	LogHooks = []*LogHook{{
+		Level: zerolog.ErrorLevel,
+		Func: func(ll *LogLine) {
+			copy := *ll
+			got = &copy
+		},
+	}}
+
+	LogError(Error("100% failed"), "could not %s", "Peek", map[string]interface{}{"job_id": "j1"})
+	require.NotNil(t, got)
+	line := got.Line()
+	assert.NotContains(t, line, "%!")
+	assert.Contains(t, line, "100% failed")
+	assert.Equal(t, "j1", got.Values["job_id"])
+}

@@ -291,12 +291,20 @@ func LogError(E error, args ...interface{}) bool {
 			err = NewError(3, E, args...).(*ErrType)
 		}
 
+		// the text is already formatted, so the hooks get only the map args
+		hookArgs := []any{}
+		for _, arg := range args {
+			if m, ok := arg.(map[string]any); ok {
+				hookArgs = append(hookArgs, m)
+			}
+		}
+
 		var e *zerolog.Event
 		if IsDebugLow() {
-			doHooks(zerolog.ErrorLevel, err.Debug(), args)
+			doHooks(zerolog.ErrorLevel, err.Debug(), hookArgs)
 			e = ZLogErr.Err(err.DebugError())
 		} else {
-			doHooks(zerolog.ErrorLevel, err.Error(), args)
+			doHooks(zerolog.ErrorLevel, err.Error(), hookArgs)
 			e = ZLogErr.Error()
 		}
 		extractLogMapArgs(args, e)
