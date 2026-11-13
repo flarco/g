@@ -70,3 +70,25 @@ func TestURL(t *testing.T) {
 	assert.Equal(t, urlStr, u.OrigURL)   // full seed list preserved
 	assert.Equal(t, urlStr, u.String())  // String() re-inserts stripped hosts
 }
+
+func TestURLErrorRedactsPassword(t *testing.T) {
+	tests := []string{
+		"oracle://user:s3cr3t@(DESCRIPTION = (ADDRESS = (HOST = h)))",
+		"oracle://user:s3c@r:e/t#?@(DESCRIPTION = (HOST = h))",
+		"postgres://user:s3cr3t@bad host:5432/db",
+	}
+	for _, urlStr := range tests {
+		_, err := NewURL(urlStr)
+		if !assert.Error(t, err, urlStr) {
+			continue
+		}
+		assert.NotContains(t, err.Error(), "s3cr3t")
+		assert.NotContains(t, err.Error(), "s3c@r")
+		assert.NotContains(t, err.Error(), "e/t#?")
+		assert.Contains(t, err.Error(), "user:***@")
+	}
+
+	// URLs without a password stay as is
+	_, err := NewURL("http://bad host/path")
+	assert.ErrorContains(t, err, "http://bad host/path")
+}

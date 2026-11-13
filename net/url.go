@@ -1,6 +1,7 @@
 package net
 
 import (
+	"errors"
 	"net/url"
 	"strings"
 
@@ -26,9 +27,44 @@ func NewURL(urlStr string) (*URL, error) {
 
 	u, err := url.Parse(parseStr)
 	if err != nil {
-		return &URL{OrigURL: urlStr}, err
+		return &URL{OrigURL: urlStr}, redactURLError(err)
 	}
 	return &URL{U: u, OrigURL: urlStr, extraHosts: extraHosts}, nil
+}
+
+// redactURLError masks the password of the URL in a *url.Error,
+// since its text would otherwise show the credentials.
+func redactURLError(err error) error {
+	var ue *url.Error
+	if !errors.As(err, &ue) {
+		return err
+	}
+	redacted := *ue
+	redacted.URL = redactURLPassword(ue.URL)
+	return &redacted
+}
+
+// redactURLPassword replaces the password in "scheme://user:password@host"
+// with "***". It works on unparsable URLs, so it uses string logic only.
+func redactURLPassword(urlStr string) string {
+	i := strings.Index(urlStr, "://")
+	if i < 0 {
+		return urlStr
+	}
+	start := i + len("://")
+	rest := urlStr[start:]
+
+	// the password may contain "/", "?" or "#": the host part starts after the last "@"
+	at := strings.LastIndex(rest, "@")
+	if at < 0 {
+		return urlStr
+	}
+	userinfo := rest[:at]
+	colon := strings.Index(userinfo, ":")
+	if colon < 0 {
+		return urlStr
+	}
+	return urlStr[:start] + userinfo[:colon+1] + "***" + rest[at:]
 }
 
 // reduceMultiHostAuthority collapses a comma-separated multi-host authority
